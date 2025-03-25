@@ -128,11 +128,11 @@ const getUser = async(req: Request , res: Response) =>  {
             res.status(404).json({message : "User not found"});
             return;
         }
-        
+
         res.status(200).json({
-                id: user?.id,
-                name : user?.name,
-                username: user?.username
+                id: user.id,
+                name : user.name,
+                username: user.username
             }
         )
     } catch (error : unknown) {
