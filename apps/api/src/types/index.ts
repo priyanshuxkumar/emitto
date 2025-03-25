@@ -18,3 +18,7 @@ export const SigninSchema = z.object({
 export const ApiKeyName = z.object({
     name : z.string()
 });
+
+export const ParamsSchema = z.object({
+    id: z.string().uuid()
+});

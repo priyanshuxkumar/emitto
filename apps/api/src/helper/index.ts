@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
 
 async function genApiKey() : Promise<string> {
   try {
@@ -12,8 +13,18 @@ async function genApiKey() : Promise<string> {
 
     return apiKey;
   } catch (error: unknown) {
-    throw new Error("Error occured while generate API key");
+    throw new Error("Error occurred while generating API key");
   }
 }
 
-export { genApiKey }
+async function convertApiToHash(apiKey : string) : Promise<string> {
+    try {
+        const salt = await bcrypt.genSalt(12);
+        const hashApiKey = await bcrypt.hash(apiKey, salt);
+        return hashApiKey;
+    } catch (error) {
+        throw new Error("Error occurred while creating hash of API key");
+    }
+}
+
+export { genApiKey , convertApiToHash}
