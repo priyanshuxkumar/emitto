@@ -1,0 +1,185 @@
+import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import bcrypt from "bcryptjs";
+import { config, cookieOptions } from '../config';
+import { ZodError } from 'zod';
+import { SigninSchema, SignupSchema } from '../types';
+import { Prisma, prisma, User } from '@repo/db';
+
+const registerUser = async(req: Request , res: Response) => {
+    try {
+        const body = req.body;
+        const parsedData = SignupSchema.safeParse(body)
+        if(!parsedData.success){
+            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
+            return;
+        }
+        const user : User | null = await prisma.user.findFirst({
+            where: {
+                email: parsedData.data.email
+            }
+        })
+
+        if(user){
+            res.status(409).json({message: 'User already exists with this email'})
+            return;
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(parsedData.data.password, salt);
+
+        await prisma.user.create({
+            data: {
+                ...parsedData.data,
+                password : {
+                    create : {
+                        hash
+                    }
+                }
+            }
+        })
+
+        res.status(200).json({message: "Check your inbox for verification email!"})
+    } catch (error : unknown) {
+        if(error instanceof Prisma.PrismaClientKnownRequestError) {
+            res.status(409).json({message: "User already exists with this email"});
+            return;
+        }
+        if(error instanceof ZodError) {
+            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
+            return;
+        }
+        if(error instanceof Error) {
+            res.status(500).json({message: error.message});
+            return;
+        }
+        res.status(500).json({message : 'Something went wrong'});   
+    }
+}
+
+const loginUser = async(req: Request , res: Response) => {
+    try {
+        const body = req.body;
+        const parsedData = SigninSchema.safeParse(body)
+        if(!parsedData.success){
+            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
+            return;
+        }
+
+        const user = await prisma.user.findFirst({
+            where: {
+                email: parsedData.data.email
+            },
+            select: {
+                id: true,
+                email: true,
+                password : {
+                    select : {
+                        hash : true
+                    }
+                }
+            }
+        })
+        if(!user){
+            res.status(404).json({message : 'Invalid credentials'});
+            return;
+        }
+
+        const hashPassword: string = String(user.password?.hash);
+
+        const isPasswordCorrect = await bcrypt.compare(parsedData.data.password , hashPassword)
+        if(!isPasswordCorrect){
+            res.status(403).json({mesasge: 'Invalid crendentials'});
+            return;
+        }
+
+        const token = jwt.sign({id: user.id}, config.jwtSecret, {expiresIn: '24h'})
+
+        res.cookie('_token_', token, cookieOptions);
+
+        res.status(200).json({message: 'Signin successfull!'})
+    } catch (error : unknown) {
+        if(error instanceof Prisma.PrismaClientKnownRequestError) {
+            res.status(404).json({message: "User not found"});
+            return;
+        }
+        if(error instanceof ZodError) {
+            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
+            return;
+        }
+        if(error instanceof Error) {
+            res.status(500).json({message: error.message});
+            return;
+        }
+        res.status(500).json({message : 'Something went wrong'}); 
+    }
+}
+
+const getUser = async(req: Request , res: Response) =>  {
+    const userId = req.id as number;
+    try {
+        const user : User | null = await prisma.user.findFirst({
+            where : {
+                id : userId
+            }
+        })
+
+        if(!user) {
+            res.status(404).json({message : "User not found"});
+            return;
+        }
+        
+        res.status(200).json({
+                id: user?.id,
+                name : user?.name,
+                username: user?.username
+            }
+        )
+    } catch (error : unknown) {
+        if(error instanceof Prisma.PrismaClientKnownRequestError) {
+            res.status(404).json({message: "User not found"});
+            return;
+        }
+        if(error instanceof Error) {
+            res.status(500).json({message: error.message});
+            return;
+        }
+        res.status(500).json({message : 'Something went wrong'}); 
+    }
+}
+
+const logoutUser = async(req: Request , res: Response) =>  {
+    const userId = req.id as number;
+    try { 
+        const user : Pick<User, "id"> | null = await prisma.user.findUnique({
+            where: {
+                id : userId
+            },
+            select : {
+                id : true,
+            }
+        })
+            
+        if(!user) {
+            res.clearCookie("_token_");
+            res.status(404).json({message: "User not found"});
+            return;
+        }
+        res.clearCookie("_token_");        
+
+        res.status(200).json({message: "Logout successfull"});
+    } catch (error : unknown) {
+        if(error instanceof Prisma.PrismaClientKnownRequestError) {
+            res.status(404).json({message: "User not found"});
+            return;
+        }
+        if(error instanceof Error) {
+            res.status(500).json({message: error.message});
+            return;
+        }
+        res.status(500).json({message : "Something went wrong"});    
+    }
+}
+
+
+export { registerUser, loginUser, getUser, logoutUser }
