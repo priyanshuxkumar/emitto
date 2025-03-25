@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  username  String    @unique
+  email     String    @unique
+  password  Password?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  apikeys       ApiKey[]
+  notifications Notification[]
+}
+
+model Password {
+  id     String @id @default(uuid())
+  hash   String
+  userId Int    @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ApiKey {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  apikey   String
+  isActive Boolean
+  userId   Int
+  user     User    @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id String @id @default(uuid())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      NotificationType
+  recipient String // Email address, phone number
+  subject   String? // For emails
+  message   String // SMS, email body, push notification content
+  status    NotificationStatus    @default(Pending)
+  provider  NotificationProvider? // SendGrid, Twilio, Firebase, etc.
+  metadata  Json? // Store extra data (e.g., response from provider)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+}
+
+enum NotificationType {
+  Email
+  Sms
+  Push
+  InApp
+}
+
+enum NotificationStatus {
+  Pending
+  Sent
+  Delivered
+  Failed
+}
+
+enum NotificationProvider {
+  SendGrid
+  Twilio
+  Firebase
+  AwsSES
+}
