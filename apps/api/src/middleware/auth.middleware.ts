@@ -4,7 +4,7 @@ import { config } from '../config';
 
 export const auth = (req: Request , res: Response , next: NextFunction) => {
     try {
-        const token = req.cookies._token_;
+        const token = req.cookies._a_token_;
         if(!token){
             res.status(401).json({message: "Unauthenticated!. Please login"});
             return;
