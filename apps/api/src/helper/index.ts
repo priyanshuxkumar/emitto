@@ -1,6 +1,9 @@
 import crypto from "crypto";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { config } from "../config";
+
 
 async function genApiKey() : Promise<string> {
   try {
@@ -27,4 +30,22 @@ async function convertApiToHash(apiKey : string) : Promise<string> {
     }
 }
 
-export { genApiKey , convertApiToHash}
+async function genAccessAndRefreshToken(userId: number, role: string) {
+  try {
+    const accessToken = jwt.sign({ id: userId, role: role }, config.jwtSecret, {
+      expiresIn: "24h",
+    });
+
+    const refreshToken = jwt.sign({ id: userId }, config.jwtRefreshSecret, {expiresIn: "7d"})
+
+    return {
+      accessToken,
+      refreshToken
+    }
+
+  } catch (error) {
+    throw new Error("Something went wrong while generating access and refresh tokens");
+  }
+}
+
+export { genApiKey , convertApiToHash, genAccessAndRefreshToken }

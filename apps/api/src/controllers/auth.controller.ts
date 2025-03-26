@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import bcrypt from "bcryptjs";
-import { config, cookieOptions } from '../config';
+import { cookieOptions } from '../config';
 import { ZodError } from 'zod';
 import { SigninSchema, SignupSchema } from '../types';
 import { Prisma, prisma, User } from '@repo/db';
+import { genAccessAndRefreshToken } from '../helper';
 
 const registerUser = async(req: Request , res: Response) => {
     try {
@@ -68,7 +68,14 @@ const loginUser = async(req: Request , res: Response) => {
 
         const user = await prisma.user.findFirst({
             where: {
-                email: parsedData.data.email
+                OR: [
+                    {
+                        email: parsedData.data.email
+                    }, 
+                    {
+                        username: parsedData.data.username
+                    }
+                ]
             },
             select: {
                 id: true,
@@ -77,7 +84,8 @@ const loginUser = async(req: Request , res: Response) => {
                     select : {
                         hash : true
                     }
-                }
+                },
+                role: true
             }
         })
         if(!user){
@@ -93,9 +101,23 @@ const loginUser = async(req: Request , res: Response) => {
             return;
         }
 
-        const token = jwt.sign({id: user.id}, config.jwtSecret, {expiresIn: '24h'})
+        const { accessToken, refreshToken } = await genAccessAndRefreshToken(user.id , user.role);
 
-        res.cookie('_token_', token, cookieOptions);
+        //Hash the refreshtoken
+        const salt = await bcrypt.genSalt(10);
+        const secret: string = await bcrypt.hash(refreshToken, salt);
+
+        //Create the entry on db of refreshtoken
+        await prisma.refreshToken.create({
+            data: {
+                secret: secret,
+                userId: user.id as number,
+                expiresAt : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
+            }
+        });
+
+        res.cookie('_a_token_', accessToken, cookieOptions);
+        res.cookie('_r_token_', refreshToken, {...cookieOptions, maxAge: 1000 * 60 * 60 * 24 * 7});
 
         res.status(200).json({message: 'Signin successfull!'})
     } catch (error : unknown) {
