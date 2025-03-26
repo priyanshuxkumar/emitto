@@ -7,6 +7,7 @@ const config = {
   nodeEnv: process.env.NODE_ENV || "development",
   frontendUrl: process.env.FRONTEND_URL,
   jwtSecret: process.env.JWT_SECRET || "",
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "",
 }
 
 export const corsOptions = {
