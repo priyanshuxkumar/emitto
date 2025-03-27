@@ -1,12 +1,19 @@
 import z from 'zod'
 
 export const EmailSchema = z.string().email('Invalid Email format'); 
-export const PasswordSchema = z.string().min(8, { message: 'Enter minimum 8 characters password' });
-export const UsernameSchema = z.string()
+
+const PasswordSchema = z
+  .string()
+  .min(8, { message: "Be at least 8 characters long" })
+  .regex(/[a-zA-Z]/, { message: "Contain at least one letter." })
+  .regex(/[0-9]/, { message: "Contain at least one number." })
+  .regex(/[^a-zA-Z0-9]/, {
+    message: "Contain at least one special character.",
+  })
+  .trim();
 
 export const SignupSchema = z.object({
     name: z.string(),
-    username: UsernameSchema,
     email : EmailSchema,
     avatarUrl: z.string().optional(),
     password: PasswordSchema,
@@ -14,11 +21,7 @@ export const SignupSchema = z.object({
 
 export const SigninSchema = z.object({
     email: EmailSchema.optional(),
-    username : UsernameSchema.optional(),
     password: PasswordSchema,
-}).refine(data => data.email || data.username, {
-    message : "Either email or username must be provided",
-    path: ["email", "username"]
 });
 
 export const ApiKeyName = z.object({
