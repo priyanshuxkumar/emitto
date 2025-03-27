@@ -68,14 +68,7 @@ const loginUser = async(req: Request , res: Response) => {
 
         const user = await prisma.user.findFirst({
             where: {
-                OR: [
-                    {
-                        email: parsedData.data.email
-                    }, 
-                    {
-                        username: parsedData.data.username
-                    }
-                ]
+                email: parsedData.data.email
             },
             select: {
                 id: true,
@@ -154,7 +147,6 @@ const getUser = async(req: Request , res: Response) =>  {
         res.status(200).json({
                 id: user.id,
                 name : user.name,
-                username: user.username
             }
         )
     } catch (error : unknown) {
