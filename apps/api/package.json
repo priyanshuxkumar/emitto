@@ -4,12 +4,13 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -b",
     "start": "node dist/bin.js",
     "dev": "concurrently \"tsc --watch \" \"nodemon dist/bin.js\" "
   },
   "dependencies": {
     "@repo/db": "*",
+    "@repo/kafka": "*",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
