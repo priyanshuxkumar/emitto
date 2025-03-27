@@ -4,10 +4,7 @@ const EmailSchema = z
   .string()
   .email({ message: "Please enter a valid email." })
   .trim();
-const UsernameSchema = z
-  .string()
-  .min(2, { message: "Name must be at least 2 characters long" })
-  .trim();
+
 const PasswordSchema = z
   .string()
   .min(8, { message: "Be at least 8 characters long" })
@@ -19,10 +16,9 @@ const PasswordSchema = z
   .trim();
 
 export const SignupFormSchema = z.object({
-  username: UsernameSchema,
   name: z
     .string()
-    .min(2, { message: "Name must be at least 2 characters long." }),
+    .min(2, { message: "Name must be at least 2 characters long." }).optional(),
   email: EmailSchema,
   password: PasswordSchema,
 });
