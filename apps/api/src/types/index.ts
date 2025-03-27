@@ -28,3 +28,13 @@ export const ApiKeyName = z.object({
 export const ParamsSchema = z.object({
     id: z.string().uuid()
 });
+
+export const SendEmailSchema = z.object({
+    toEmail : z.string(),
+    body : z.object({
+        recipientFirstname : z.string(),
+        recipientLastname : z.string().optional(),
+        subject : z.string(),
+        message : z.string()
+    })
+})
