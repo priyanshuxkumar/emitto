@@ -97,7 +97,7 @@ const loginUser = async(req: Request , res: Response) => {
 
         const isPasswordCorrect = await bcrypt.compare(parsedData.data.password , hashPassword)
         if(!isPasswordCorrect){
-            res.status(403).json({mesasge: 'Invalid crendentials'});
+            res.status(403).json({message: 'Invalid crendentials'});
             return;
         }
 
