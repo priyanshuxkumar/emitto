@@ -15,15 +15,13 @@ const PasswordSchema = z
   })
   .trim();
 
-export const SignupFormSchema = z.object({
-  name: z
-    .string()
-    .min(2, { message: "Name must be at least 2 characters long." }).optional(),
+export const SigninFormSchema = z.object({
   email: EmailSchema,
   password: PasswordSchema,
 });
 
-export const SigninFormSchema = z.object({
+export const SignupFormSchema = z.object({
+  name : z.string(),
   email: EmailSchema,
   password: PasswordSchema,
 });
