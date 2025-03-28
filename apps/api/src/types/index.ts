@@ -1,6 +1,6 @@
-import z from 'zod'
+import z from "zod";
 
-export const EmailSchema = z.string().email('Invalid Email format'); 
+export const EmailSchema = z.string().email("Invalid Email format");
 
 const PasswordSchema = z
   .string()
@@ -13,31 +13,28 @@ const PasswordSchema = z
   .trim();
 
 export const SignupSchema = z.object({
-    name: z.string(),
-    email : EmailSchema,
-    avatarUrl: z.string().optional(),
-    password: PasswordSchema,
+  name: z.string(),
+  email: EmailSchema,
+  avatarUrl: z.string().optional(),
+  password: PasswordSchema,
 });
 
 export const SigninSchema = z.object({
-    email: EmailSchema.optional(),
-    password: PasswordSchema,
+  email: EmailSchema.optional(),
+  password: PasswordSchema,
 });
 
 export const ApiKeyName = z.object({
-    name : z.string()
+  name: z.string(),
 });
 
 export const ParamsSchema = z.object({
-    id: z.string().uuid()
+  id: z.string().uuid(),
 });
 
 export const SendEmailSchema = z.object({
-    toEmail : z.string(),
-    body : z.object({
-        recipientFirstname : z.string(),
-        recipientLastname : z.string().optional(),
-        subject : z.string(),
-        message : z.string()
-    })
-})
+  from: z.string(),
+  to: z.array(z.string()) ,
+  subject: z.string(),
+  html: z.string().optional(),
+});
