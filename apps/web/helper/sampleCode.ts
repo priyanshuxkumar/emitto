@@ -4,13 +4,10 @@ const ezysend = new EzySend(nt_111222333);
 
 (async function() {
   const response = await ezysend.sendEmail({
-    toEmail : 'example@ezysend.com',
-    body : {
-        recipientFirstname : 'Test Email Ezysend',
-        recipientLastname : 'Ezysend',
-        subject : 'Testing Email from Ezysend',
-        message : 'Effortless Email & Notification API for Developers'
-    }
+    from : 'example@ezysend.com',
+    to: 'priyanshukumar.spam@gmail.com',
+    subject : 'Testing Email from Ezysend',
+    html : '<strong>hello world!</strong>'
   });
   console.log("Email Response:", response);
 })();`
