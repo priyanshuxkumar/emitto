@@ -6,11 +6,11 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch & node dist/index.js",
+    "dev": "tsc & node dist/index.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@react-email/components": "^0.0.34",
-    "resend": "^4.2.0"
+    "@aws-sdk/client-ses": "^3.777.0",
+    "dotenv": "^16.4.7"
   }
 }

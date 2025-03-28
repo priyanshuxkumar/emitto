@@ -1,12 +1,15 @@
-import { Resend } from 'resend';
 import dotenv from "dotenv";
-
 dotenv.config();
+import { SESClient } from "@aws-sdk/client-ses";
 
-const config = {
-  resendApiKey : process.env.RESEND_API_KEY
-}
+const SES_CONFIG = {
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY!,
+        secretAccessKey: process.env.AWS_SECRET_KEY!,
+    },
+    region: process.env.AWS_REGION!,
+};
 
-const resend = new Resend(config.resendApiKey);
+const sesClient = new SESClient(SES_CONFIG);
 
-export { config, resend}
+export { sesClient }
