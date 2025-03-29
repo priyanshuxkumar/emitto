@@ -82,7 +82,7 @@ const loginUser = async(req: Request , res: Response) => {
             }
         })
         if(!user){
-            res.status(404).json({message : 'Invalid credentials'});
+            res.status(404).json({message : 'Invalid Credentials'});
             return;
         }
 
@@ -90,7 +90,7 @@ const loginUser = async(req: Request , res: Response) => {
 
         const isPasswordCorrect = await bcrypt.compare(parsedData.data.password , hashPassword)
         if(!isPasswordCorrect){
-            res.status(403).json({message: 'Invalid crendentials'});
+            res.status(403).json({message: 'Invalid Credentials'});
             return;
         }
 
