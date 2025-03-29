@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Prisma, prisma } from '@repo/db';
 import { ApiKeyName, ParamsSchema } from '../types';
-import { convertApiToHash, genApiKey } from '../helper';
+import { genApiKey, generateHash } from '../helper';
 import { ZodError } from 'zod';
 
 const createApiKey = async(req: Request , res: Response) => {
@@ -27,13 +27,13 @@ const createApiKey = async(req: Request , res: Response) => {
             return;
         }
 
-        const apikey : string = await genApiKey();
+        const apiKey : string = genApiKey();
 
-        if (!apikey) {
+        if (!apiKey) {
             throw new Error("Failed to generate API key");
         }
 
-        const hashApiKey = await convertApiToHash(apikey);
+        const hashApiKey = generateHash(apiKey);
 
         if (!hashApiKey) {
             throw new Error("Failed to hash API key");
@@ -50,7 +50,7 @@ const createApiKey = async(req: Request , res: Response) => {
 
         res.status(201).json({
             message: "Api key created successfully. This key will not be shown again. Save it securely!", 
-            apikey
+            apiKey
         });
     } catch (error : unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -90,9 +90,12 @@ const destroyApiKey = async(req: Request , res: Response) => {
             return;
         }
 
-        await prisma.apiKey.delete({
+        await prisma.apiKey.update({
             where : {
                 id : apikeyId
+            },
+            data : {
+                isActive : false
             }
         });
 
