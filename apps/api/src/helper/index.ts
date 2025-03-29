@@ -1,11 +1,18 @@
 import crypto from "crypto";
 import { randomUUID } from "crypto";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
+import { prisma } from "@repo/db";
 
+function generateHash(value : string) : string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+};
 
-async function genApiKey() : Promise<string> {
+function verifyHash(value : string , hash : string) : boolean {
+  return generateHash(value) === hash;
+};
+
+function genApiKey() : string {
   try {
     const prefix = "nt_";
     const randomByte = crypto.randomBytes(32);
@@ -16,17 +23,49 @@ async function genApiKey() : Promise<string> {
 
     return apiKey;
   } catch (error: unknown) {
-    throw new Error("Error occurred while generating API key");
+    throw (error);
   }
 }
 
-async function convertApiToHash(apiKey : string) : Promise<string> {
-    try {
-        const salt = await bcrypt.genSalt(12);
-        const hashApiKey = await bcrypt.hash(apiKey, salt);
-        return hashApiKey;
+async function isApiKeyValid(apiKey : string) : Promise<boolean> {
+    try { 
+      const hashedApiKey = generateHash(apiKey);
+      
+      const result = await prisma.apiKey.findUnique({
+        where : {
+          apikey : hashedApiKey
+        },
+        select : {
+          apikey : true,
+          isActive : true,
+          expiresAt : true
+        }
+      });
+
+      if(!result) {
+        throw new Error("Incorrect Api Key");
+      }
+
+      if(!result.isActive) {
+        throw new Error("Api Key is not active");
+      }
+
+      if(result.expiresAt) { 
+        const expirationTime = new Date(result?.expiresAt).getTime();
+        const currentTime = Date.now();
+        
+        if(expirationTime < currentTime){
+          throw new Error("Api Key has been expired");
+        }
+      }
+
+      if(!verifyHash(apiKey, result.apikey)) {
+        throw new Error("Invalid Api Key");
+      }
+
+      return true;
     } catch (error) {
-        throw new Error("Error occurred while creating hash of API key");
+      throw error;
     }
 }
 
@@ -48,4 +87,4 @@ async function genAccessAndRefreshToken(userId: number, role: string) {
   }
 }
 
-export { genApiKey , convertApiToHash, genAccessAndRefreshToken }
+export {generateHash, genApiKey, isApiKeyValid, genAccessAndRefreshToken }
