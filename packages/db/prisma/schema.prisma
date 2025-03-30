@@ -69,16 +69,14 @@ model ApiKey {
 }
 
 model Email {
-  id       String      @id @default(uuid())
+  id       String   @id @default(uuid())
   from     String
-  to       String
+  to       String[]
   subject  String
   html     String
   metadata Json // Response of email (eg : requestId , messageId)
-  status   EmailStatus @default(PENDING)
-  category Category
   userId   Int
-  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
@@ -91,18 +89,6 @@ model Feedback {
 
   userId Int
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-enum EmailStatus {
-  PENDING
-  SENT
-  DELIVERED
-  FAILED
-}
-
-enum Category {
-  TRANSACTIONAL // OTP, Order Confirmations, Password Reset
-  PROMOTIONAL // Marketing, Newsletters, Ads
 }
 
 enum UserPermissionRole {
