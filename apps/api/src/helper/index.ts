@@ -27,7 +27,7 @@ function genApiKey() : string {
   }
 }
 
-async function isApiKeyValid(apiKey : string) : Promise<boolean> {
+async function isApiKeyValid(apiKey : string) : Promise<{ apiKeyId: string, userId: number }> {
     try { 
       const hashedApiKey = generateHash(apiKey);
       
@@ -36,6 +36,8 @@ async function isApiKeyValid(apiKey : string) : Promise<boolean> {
           apikey : hashedApiKey
         },
         select : {
+          id : true,
+          userId : true,
           apikey : true,
           isActive : true,
           expiresAt : true
@@ -63,7 +65,10 @@ async function isApiKeyValid(apiKey : string) : Promise<boolean> {
         throw new Error("Invalid Api Key");
       }
 
-      return true;
+      return {
+        apiKeyId : result.id,
+        userId : result.userId
+      };
     } catch (error) {
       throw error;
     }
