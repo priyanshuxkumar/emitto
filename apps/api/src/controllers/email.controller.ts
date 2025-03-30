@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { SendEmailSchema } from "../types";
 import { producer, TOPIC_EMAIL } from "@repo/kafka";
 import { isApiKeyValid } from "../helper";
-import { Prisma } from "@repo/db";
+import { prisma, Prisma } from "@repo/db";
 
 const sendEmail = async(req: Request, res: Response) => {
     try {
@@ -19,8 +19,12 @@ const sendEmail = async(req: Request, res: Response) => {
             return;
         };
 
+        let apiKeyId : string;
+        let userId : number;
         try {
-            await isApiKeyValid(apiKey as string);
+            const { apiKeyId : apikey_id, userId: user_id } = await isApiKeyValid(apiKey as string);
+            apiKeyId = apikey_id;
+            userId = user_id;
         } catch (error) {
             if(error instanceof Error){
                 res.status(500).json({ message : error?.message });
@@ -31,10 +35,23 @@ const sendEmail = async(req: Request, res: Response) => {
             }
         };
 
+        //Update the lastUsed field on Api table
+        await prisma.apiKey.update({
+            where : {
+                id : apiKeyId
+            },
+            data : {
+                lastUsedAt : new Date()
+            }
+        });
+
         await producer.send({
             topic: TOPIC_EMAIL,
             messages: [{
-                value : JSON.stringify(parsedData.data),
+                value : JSON.stringify({
+                    ...parsedData.data,
+                    userId
+                }),
             }]
         });
         res.status(200).json({message : "Email processing..."});
