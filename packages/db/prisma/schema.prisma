@@ -25,10 +25,10 @@ model User {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
-  apikeys       ApiKey[]
-  notifications Notification[]
-  refreshToken  RefreshToken[]
-  feedbacks     Feedback[]
+  apikeys      ApiKey[]
+  emails       Email[]
+  refreshToken RefreshToken[]
+  feedbacks    Feedback[]
 
   @@unique([email])
 }
@@ -68,22 +68,19 @@ model ApiKey {
   updatedAt DateTime @updatedAt
 }
 
-model Notification {
-  id String @id @default(uuid())
+model Email {
+  id       String      @id @default(uuid())
+  from     String
+  to       String
+  subject  String
+  html     String
+  metadata Json // Response of email (eg : requestId , messageId)
+  status   EmailStatus @default(PENDING)
+  category Category
+  userId   Int
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  userId Int
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  type      NotificationType
-  category  NotificationCategory
-  recipient String // Email address, phone number
-  subject   String? // For emails
-  message   String // SMS, email body, push notification content
-  status    NotificationStatus    @default(PENDING)
-  provider  NotificationProvider? // SendGrid, Twilio, Firebase, etc.
-  metadata  Json? // Store extra data (response from provider)
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
+  createdAt DateTime @default(now())
 }
 
 model Feedback {
@@ -96,30 +93,16 @@ model Feedback {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-enum NotificationType {
-  EMAIL
-  SMS
-  PUSH
-  IN_APP
-}
-
-enum NotificationCategory {
-  TRANSACTIONAL // OTP, Order Confirmations, Password Reset
-  PROMOTIONAL // Marketing, Newsletters, Ads
-}
-
-enum NotificationStatus {
+enum EmailStatus {
   PENDING
   SENT
   DELIVERED
   FAILED
 }
 
-enum NotificationProvider {
-  SENDGRID
-  TWILIO
-  FIREBASE
-  AWS_SES
+enum Category {
+  TRANSACTIONAL // OTP, Order Confirmations, Password Reset
+  PROMOTIONAL // Marketing, Newsletters, Ads
 }
 
 enum UserPermissionRole {
