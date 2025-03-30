@@ -171,5 +171,44 @@ const updateApiKeyName = async(req: Request , res: Response) => {
     }
 };
 
+const disableApiKey = async(req: Request , res: Response) => {
+    const userId = req.id as number;
+    try {
+        const apiKeyId = req.params.id;
+        if(!apiKeyId) {
+            res.status(400).json({message : "Api key is missing"});
+            return;
+        }
 
-export { createApiKey, destroyApiKey, updateApiKeyName }
+        const apikey = await prisma.apiKey.findUnique({
+            where : {
+                id : apiKeyId,
+                userId
+            }
+        });
+
+        if(!apikey) {
+            res.status(404).json({message : "Api key not found"});
+            return;
+        }
+
+        await prisma.apiKey.update({
+            where : {
+                id : apiKeyId
+            },
+            data : {
+                isActive : false
+            }
+        });
+
+        res.status(200).json({ message : "Api key has been disabled"});
+    } catch (error) {
+        if(error instanceof Error) {
+            res.status(500).json({message : error.message});
+            return;
+        }
+        res.status(500).json({ message: "Something went wrong" });
+    }
+}
+
+export { createApiKey, destroyApiKey, updateApiKeyName, disableApiKey }
