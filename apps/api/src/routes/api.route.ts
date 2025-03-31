@@ -1,10 +1,15 @@
 import { Router } from 'express';
 import { auth } from '../middleware/auth.middleware';
-import { createApiKey, destroyApiKey, disableApiKey, updateApiKeyName } from '../controllers/api.controller';
+import { createApiKey, destroyApiKey, disableApiKey, getAllApiKeys, getApiKeyDetails, updateApiKeyName } from '../controllers/api.controller';
+import { prisma } from '@repo/db';
 
 const router = Router()
 
 router.route("/create").post(auth, createApiKey);
+
+router.route("/").get(auth, getAllApiKeys);
+
+router.route("/:id").get(auth, getApiKeyDetails);
 
 router.route("/disable/:id").put(auth , disableApiKey);
 

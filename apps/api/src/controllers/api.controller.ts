@@ -39,18 +39,26 @@ const createApiKey = async(req: Request , res: Response) => {
             throw new Error("Failed to hash API key");
         }
 
-        await prisma.apiKey.create({
+        const result = await prisma.apiKey.create({
             data : {
                 name: parsedData.data.name,
                 apikey : hashApiKey,
                 userId,
-                isActive: true
+                isActive: true,
+                shortToken: apiKey.slice(0,11)
             }
         })
 
         res.status(201).json({
             message: "Api key created successfully. This key will not be shown again. Save it securely!", 
-            apiKey
+            apiKey,
+            apiKeyMetadata : {
+                id : result.id,
+                name : result.name,
+                shortToken : result.shortToken,
+                lastUsed : null,
+                createdAt : result.createdAt
+            }
         });
     } catch (error : unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -68,6 +76,97 @@ const createApiKey = async(req: Request , res: Response) => {
         res.status(500).json({ message: "Something went wrong" });
     }
 };
+
+const getApiKeyDetails  = async(req : Request , res: Response) => {
+    const apiKeyId = req.params.id;
+    try {
+        const result = await prisma.apiKey.findFirst({
+            where : {
+                id : apiKeyId
+            },
+            include : {
+                user : true,
+                apikeyUsage : {
+                    select : {
+                        createdAt : true
+                    },
+                    orderBy : {
+                        createdAt : 'desc'
+                    },
+                    take : 1
+                },
+            }
+        });
+
+        if(!result) {
+            res.status(404).json({message : "API Key not found"});
+            return;
+        }
+        res.status(200).json({
+                id : result.id,
+                name : result.name,
+                permission : 'Full',
+                shortToken : result.shortToken,
+                status : result.isActive,
+                totalUses : result.apikeyUsage.length, //Count of api being used
+                userId : result.userId,
+                creatorEmail : result.user.email,
+                lastUsed : result.apikeyUsage[0]?.createdAt, // API Last used time 
+                createdAt : result.createdAt 
+        });
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === "P2025") {
+                res.status(404).json({ message: "API key not found or already deleted" });
+                return;
+            }
+        }
+
+        res.status(500).json({ message: "Something went wrong" });
+    }
+}
+
+const getAllApiKeys = async(req : Request , res: Response) => {
+    const userId = req.id as number;
+    try {
+        const result = await prisma.apiKey.findMany({
+            where : {
+                userId
+            },
+            include : {
+                apikeyUsage : {
+                    select : {
+                        createdAt : true
+                    },
+                    orderBy : {
+                        createdAt : 'desc'
+                    },
+                    take : 1
+                },
+            }
+        });
+        res.status(200).json(
+            result.map(item => {
+                return {
+                    id : item.id,
+                    name : item.name,
+                    shortToken : item.shortToken,
+                    lastUsed : item.apikeyUsage[0]?.createdAt, // API Last used time 
+                    createdAt : item.createdAt
+                }
+            })
+        );
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+            if (error.code === "P2025") {
+                res.status(404).json({ message: "API key not found or already deleted" });
+                return;
+            }
+        }
+
+        res.status(500).json({ message: "Something went wrong" });
+    }
+}
 
 const destroyApiKey = async(req: Request , res: Response) => {
     try {
@@ -211,4 +310,4 @@ const disableApiKey = async(req: Request , res: Response) => {
     }
 }
 
-export { createApiKey, destroyApiKey, updateApiKeyName, disableApiKey }
+export { createApiKey, getAllApiKeys, getApiKeyDetails, destroyApiKey, updateApiKeyName, disableApiKey }
