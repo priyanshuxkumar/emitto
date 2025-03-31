@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, Lock, Settings } from "lucide-react";
+import { Mail, Lock, Settings2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -19,7 +19,7 @@ const item = [
     link: "/apikeys",
   },
   {
-    icon: <Settings />,
+    icon: <Settings2 />,
     title: "Settings",
     link: "/settings",
   },
