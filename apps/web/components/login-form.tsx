@@ -50,9 +50,9 @@ export function LoginForm({
       });
       if(response.status == 200) {
         toast.success('Login Successful', {
-          description: 'Redirecting to dashboard...'
+          description: 'Redirecting to emails...'
         });
-        router.push('/dashboard');
+        router.push('/emails');
       }
     } catch (err) {
       if (err instanceof AxiosError) {

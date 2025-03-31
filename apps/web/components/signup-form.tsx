@@ -60,7 +60,7 @@ export function SignupForm() {
         toast.success("Signup Successful", {
           description: response.data.message,
         });
-        router.push("/dashboard");
+        router.push("/emails");
       }
     } catch (err) {
       if (err instanceof AxiosError) {
