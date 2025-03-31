@@ -59,7 +59,6 @@ const useFetchEmails = () => {
 
 export default function Page() {
   const { data , isLoading } = useFetchEmails();
-  console.log(data);
   return (
     <div className="flex items-center justify-between mx-26 mt-12">
       <div className="w-full">
@@ -81,7 +80,6 @@ export default function Page() {
         </div>
 
         {/* Body  */}
-
         <div className="mt-12">
           <Table>
             <TableHeader>
@@ -112,7 +110,7 @@ export default function Page() {
                         {item.status}
                       </span>
                     </TableCell>
-                    <TableCell className="py-4">{item.subject}</TableCell>
+                    <TableCell className="py-4 truncate">{item.subject}</TableCell>
                     <TableCell className="text-right py-4">{timeAgo(item.sentTime as Date)}</TableCell>
                   </TableRow>
                 ))

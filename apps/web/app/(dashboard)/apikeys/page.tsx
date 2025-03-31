@@ -265,7 +265,7 @@ export default function Page() {
                 <TableRow key={item.id} className="text-base">
                   <TableCell className="font-semibold underline decoration-dashed text-ellipsis pr-8 py-4"><Link href={`/apikeys/${item.id}`}>{item.name}</Link></TableCell>
                   <TableCell className="py-4">
-                    <span className="bg-secondary/80 p-1 rounded-sm text-sm">{item.shortToken}</span>
+                    <span className="bg-secondary/80 p-1 rounded-sm text-sm">{item.shortToken}....</span>
                   </TableCell>
                   <TableCell className="py-4">Full access</TableCell>
                   <TableCell className="text-right py-4">
