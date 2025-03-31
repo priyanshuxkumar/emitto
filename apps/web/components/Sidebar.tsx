@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, Lock, Settings, Ellipsis } from "lucide-react";
+import { Mail, Lock, Settings } from "lucide-react";
 import { Button } from "./ui/button";
-import { useUser } from "@/context/userContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import UserProfile from "./UserProfile";
 
 const item = [
   {
@@ -27,9 +26,6 @@ const item = [
 ];
 
 export default function Sidebar() {
-  //Logged-in User Details
-  const { user } = useUser();
-
   const pathname = usePathname();
   return (
     <>
@@ -53,31 +49,7 @@ export default function Sidebar() {
           ))}
         </ul>
       </nav>
-      <Button
-        variant={"secondary"}
-        className="flex justify-between items-center"
-      >
-        <div className="flex gap-2 items-center">
-          <div>
-            <Avatar>
-              <AvatarImage src={user?.userMetadata.avatarUrl} />
-              <AvatarFallback className="uppercase text-white text-xl font-semibold">
-                {user?.userMetadata.name
-                  .split(" ")
-                  .map((n: string) => n[0])
-                  .join("")
-                  .toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-          <div>
-            <span>{user?.userMetadata.name}</span>
-          </div>
-        </div>
-        <div>
-          <Ellipsis />
-        </div>
-      </Button>
+      <UserProfile/>
     </>
   );
 }
