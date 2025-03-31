@@ -65,7 +65,7 @@ export default function Page() {
           <Loader color="white" strokeWidth="2" size="30" />
         </div>
       ) : (
-        <div className="scrollContainer h-[calc(100vh-60px)] overflow-auto text-white pb-10">
+        <div className="text-white pb-10">
           <div className="max-w-5xl mx-auto">
             {/* Header */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4 py-8">

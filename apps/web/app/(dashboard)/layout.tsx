@@ -16,7 +16,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <nav className="border-b h-15 border-slate-6 flex items-center justify-end px-6">
           <Feedback/>
         </nav>
+        <div className="h-[calc(100vh-60px)] overflow-auto">
         {children}
+        </div>
       </main>
     </div>
   );
