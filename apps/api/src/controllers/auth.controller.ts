@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from "bcryptjs";
-import { cookieOptions } from '../config';
+import { config, cookieOptions } from '../config';
 import { ZodError } from 'zod';
 import { SigninSchema, SignupSchema } from '../types';
 import { Prisma, prisma, User } from '@repo/db';
@@ -169,23 +169,23 @@ const getUser = async(req: Request , res: Response) =>  {
 }
 
 const logoutUser = async(req: Request , res: Response) =>  {
-    const userId = req.id as number;
-    try { 
-        const user : Pick<User, "id"> | null = await prisma.user.findUnique({
-            where: {
-                id : userId
-            },
-            select : {
-                id : true,
-            }
-        })
-            
-        if(!user) {
-            res.clearCookie("_token_");
-            res.status(404).json({message: "User not found"});
-            return;
+    try {
+        res.clearCookie("_a_token_");
+        res.clearCookie("_r_token_");
+
+        if (config.nodeEnv === 'production') {
+            res.clearCookie("_a_token_", { 
+                secure: true,
+                sameSite: 'none'
+            });
+            res.clearCookie("_r_token_", { 
+                secure: true,
+                sameSite: 'none'
+            });
         }
-        res.clearCookie("_token_");        
+
+        res.clearCookie("_a_token_");     
+        res.clearCookie("_r_token_");        
 
         res.status(200).json({message: "Logout successfull"});
     } catch (error : unknown) {
