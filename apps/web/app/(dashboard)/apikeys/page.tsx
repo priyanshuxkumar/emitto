@@ -56,7 +56,7 @@ interface ApiDataProp {
 const useFetchApiKeys = () => {
   const [data, setData] = useState<ApiDataProp[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<null | unknown>(null);
+  const [error, setError] = useState<string>('');
   
   useEffect(() => {
     const fetchData = async () => {
@@ -70,8 +70,13 @@ const useFetchApiKeys = () => {
         });
         setData(response.data);
       } catch (err : unknown) {
-        console.error(err);
-        setError(err);
+        if (err instanceof AxiosError) {
+          const errorMessage = err.response?.data?.message || 'Failed to fetch API Keys';
+          setError(errorMessage);
+        } else if (err instanceof Error) {
+          const errorMessage = err.message || 'Failed to fetch API Keys';
+          setError(errorMessage);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -80,11 +85,11 @@ const useFetchApiKeys = () => {
     fetchData();
   }, []);
 
-  return { data: data || [], setData, isLoading, error,  };
+  return { data: data || [], setData, isLoading, error };
 };
 
 export default function Page() {
-  const { data, setData, isLoading, error } = useFetchApiKeys();
+  const { data, setData, isLoading, error:errMessage } = useFetchApiKeys();
 
   // Copy API Key 
   const apiKeyRef = useRef<HTMLInputElement | null>(null);
@@ -254,10 +259,10 @@ export default function Page() {
                 </div>
               </TableCell>
             </TableRow>
-            ) : error ? (
+            ) : errMessage ? (
               <TableRow>
                 <TableCell colSpan={5}>
-                  <ErrorPage errorMessage={error}/>
+                  <ErrorPage errorMessage = {errMessage as string}/>
                 </TableCell>
               </TableRow>
             ) : (
