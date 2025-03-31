@@ -35,13 +35,10 @@ const sendEmail = async(req: Request, res: Response) => {
             }
         };
 
-        //Update the lastUsed field on Api table
-        await prisma.apiKey.update({
-            where : {
-                id : apiKeyId
-            },
+        //Create the entry about API usage
+        await prisma.apiKeyUsage.create({
             data : {
-                lastUsedAt : new Date()
+                apikeyId : apiKeyId,
             }
         });
 
@@ -68,4 +65,63 @@ const sendEmail = async(req: Request, res: Response) => {
     }
 }
 
-export { sendEmail }
+const getAllEmail = async(req: Request, res: Response) => {
+    const userId = req.id as number
+    try {
+        const result = await prisma.email.findMany({
+            where : {
+                userId
+            }
+        })
+
+        res.status(200).json(
+            result.map(item => {
+                return {
+                    id : item.id,
+                    to : item.to,
+                    status : 'Delivered',
+                    subject : item.subject,
+                    sentTime : item.createdAt
+                }
+            })
+        )
+    } catch (error) {
+        if(error instanceof Prisma.PrismaClientUnknownRequestError) {
+            res.status(500).json({ message : error.message}) 
+            return;
+        }
+        if(error instanceof Error) {
+            res.status(500).json({ message : error.message || "Something went wrong"});
+            return;
+        }
+        res.status(500).json({ message : "Something went wrong"});
+    }
+}
+
+const getEmailDetails = async (req: Request, res: Response) => {
+    const emailId = req.params.id;
+    try {
+        const result = await prisma.email.findUnique({
+            where : {
+                id : emailId
+            }
+        });
+        if(!result) {
+            res.status(404).json({ message : "Email not found" });
+            return;
+        }
+        res.status(200).json(result);
+    } catch (error) {
+        if(error instanceof Prisma.PrismaClientUnknownRequestError) {
+            res.status(500).json({ message : error.message}) 
+            return;
+        }
+        if(error instanceof Error) {
+            res.status(500).json({ message : error.message || "Something went wrong"});
+            return;
+        }
+        res.status(500).json({ message : "Something went wrong"});
+    }
+}
+
+export { sendEmail, getAllEmail, getEmailDetails }
