@@ -38,3 +38,7 @@ export const SendEmailSchema = z.object({
   subject: z.string(),
   html: z.string().optional(),
 });
+
+export const SubmitFeedbackSchema = z.object({
+  comment : z.string()
+})
