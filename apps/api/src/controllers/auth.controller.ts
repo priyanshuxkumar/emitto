@@ -146,7 +146,13 @@ const getUser = async(req: Request , res: Response) =>  {
 
         res.status(200).json({
                 id: user.id,
-                name : user.name,
+                email : user.email,
+                userMetadata : {
+                    name : user.name,
+                    avatarUrl: user.avatarUrl,
+                    email : user.email,
+                    emailVerified: user.verified
+                }
             }
         )
     } catch (error : unknown) {
