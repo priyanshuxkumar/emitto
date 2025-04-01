@@ -1,10 +1,12 @@
 import { Router } from 'express';
-import { sendEmail, getAllEmail, getEmailDetails } from '../controllers/email.controller';
+import { sendEmail, getAllEmail, getEmailDetails, checkEmailUnique } from '../controllers/email.controller';
 import { auth } from '../middleware/auth.middleware';
 
 const router = Router()
 
 router.route("/send").post(sendEmail);
+
+router.route("/check-email-unique").post(auth, checkEmailUnique);
 
 router.route("/").get(auth, getAllEmail);
 

@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
-import { SendEmailSchema } from "../types";
+import { EmailSchema, SendEmailSchema } from "../types";
 import { producer, TOPIC_EMAIL } from "@repo/kafka";
 import { isApiKeyValid } from "../helper";
 import { prisma, Prisma } from "@repo/db";
+import { ZodError } from "zod";
 
 const sendEmail = async(req: Request, res: Response) => {
     try {
@@ -35,19 +36,27 @@ const sendEmail = async(req: Request, res: Response) => {
             }
         };
 
-        //Create the entry about API usage
-        await prisma.apiKeyUsage.create({
+        //Create the entry about API usage / Logs
+        const method = req.method;
+        const endpoint = req.url;
+        const apikeylog = await prisma.apiKeyLogs.create({
             data : {
+                userId,
+                method,
+                endpoint,
+                requestBody : req.body,
                 apikeyId : apiKeyId,
             }
         });
 
+        //Publish to topic
         await producer.send({
             topic: TOPIC_EMAIL,
             messages: [{
                 value : JSON.stringify({
                     ...parsedData.data,
-                    userId
+                    userId,
+                    apikeylogId : apikeylog.id
                 }),
             }]
         });
@@ -62,6 +71,44 @@ const sendEmail = async(req: Request, res: Response) => {
             return;
         }
         res.status(500).json({ message : "Something went wrong"});
+    }
+}
+
+const checkEmailUnique =  async(req: Request, res: Response) => {
+    try {
+        const email = req.body.email;
+        const parsedEmail = EmailSchema.safeParse(email);
+        if(!parsedEmail.data) {
+            res.status(400).json({message: parsedEmail?.error?.issues[0]?.message ?? "Invalid Input"});
+            return;
+        }
+
+        const isEmailExist = await prisma.user.count({
+            where : {
+                email
+            },
+            take: 1 // Stop counting after first match found
+        });
+
+        if(isEmailExist) {
+            res.status(200).json({status: false, message : "Email already exists"});
+            return;
+        } 
+        res.status(200).json({status: true, message : "Email is available"})
+    } catch (error) {
+        if(error instanceof Prisma.PrismaClientKnownRequestError) {
+            res.status(404).json({message: "User not found"});
+            return;
+        }
+        if(error instanceof ZodError) {
+            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
+            return;
+        }
+        if(error instanceof Error) {
+            res.status(500).json({message: error.message});
+            return;
+        }
+        res.status(500).json({message : 'Something went wrong'}); 
     }
 }
 
@@ -124,4 +171,4 @@ const getEmailDetails = async (req: Request, res: Response) => {
     }
 }
 
-export { sendEmail, getAllEmail, getEmailDetails }
+export { sendEmail, checkEmailUnique, getAllEmail, getEmailDetails }
