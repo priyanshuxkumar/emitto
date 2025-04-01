@@ -130,44 +130,6 @@ const loginUser = async(req: Request , res: Response) => {
     }
 }
 
-const getUser = async(req: Request , res: Response) =>  {
-    const userId = req.id as number;
-    try {
-        const user : User | null = await prisma.user.findFirst({
-            where : {
-                id : userId
-            }
-        })
-
-        if(!user) {
-            res.status(404).json({message : "User not found"});
-            return;
-        }
-
-        res.status(200).json({
-                id: user.id,
-                email : user.email,
-                userMetadata : {
-                    name : user.name,
-                    avatarUrl: user.avatarUrl,
-                    email : user.email,
-                    emailVerified: user.verified
-                }
-            }
-        )
-    } catch (error : unknown) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(404).json({message: "User not found"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : 'Something went wrong'}); 
-    }
-}
-
 const logoutUser = async(req: Request , res: Response) =>  {
     try {
         res.clearCookie("_a_token_");
@@ -202,4 +164,4 @@ const logoutUser = async(req: Request , res: Response) =>  {
 }
 
 
-export { registerUser, loginUser, getUser, logoutUser }
+export { registerUser, loginUser, logoutUser }
