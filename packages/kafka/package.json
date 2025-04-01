@@ -6,12 +6,14 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch & node dist/consumer.js",
+    "dev:email" : "tsc --watch & node dist/consumer.js email-group",
+    "dev:sms" : "tsc --watch & node dist/consumer.js sms-group",
+    "dev": "tsc --watch & node dist/consumer.js email-group & node dist/consumer.js sms-group",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "kafkajs": "^2.2.4",
-    "@repo/email": "*",
+    "@repo/notifications": "*",
     "@repo/db" : "*"
   }
 }
