@@ -41,4 +41,16 @@ export const SendEmailSchema = z.object({
 
 export const SubmitFeedbackSchema = z.object({
   comment : z.string()
+});
+
+export const UpdateUserDetailsSchema =  z.object({
+  name : z.string().optional(),
+  email : EmailSchema.optional(),
+}).refine((data) => data.email || data.name , {
+  message : "At least one of name or email must be provided."
+});
+
+export const SendSMSSchema = z.object({
+  phoneNumber : z.string(),
+  message : z.string()
 })
