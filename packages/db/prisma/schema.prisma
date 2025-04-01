@@ -67,15 +67,27 @@ model ApiKey {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  apikeyUsage ApiKeyUsage[]
+  apikeyLogs ApiKeyLogs[]
+
+  @@index([userId])
 }
 
-model ApiKeyUsage {
-  id       String @id @default(uuid())
-  apikeyId String
-  apikey   ApiKey @relation(fields: [apikeyId], references: [id])
+model ApiKeyLogs {
+  id             String @id @default(uuid())
+  userId         Int?
+  method         String
+  endpoint       String
+  responseStatus Int?
+  requestBody    Json?
+  responseBody   Json?
+
+  apikeyId       String
+  apikey         ApiKey @relation(fields: [apikeyId], references: [id])
 
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([apikeyId])
 }
 
 model Email {
@@ -95,8 +107,8 @@ model Feedback {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   comment   String?
-  userId Int
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum UserPermissionRole {
