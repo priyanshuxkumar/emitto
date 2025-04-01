@@ -47,10 +47,7 @@ export default function UserProfile() {
               <Avatar>
                 <AvatarImage src={user?.userMetadata.avatarUrl} />
                 <AvatarFallback className="uppercase text-white text-xl font-semibold">
-                  {user?.userMetadata.name
-                    .split(" ")
-                    .map((n: string) => n[0])
-                    .join("")
+                  {user?.userMetadata.name[0]
                     .toUpperCase()}
                 </AvatarFallback>
               </Avatar>

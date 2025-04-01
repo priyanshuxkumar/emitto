@@ -42,7 +42,7 @@ export const UserProvider : React.FC<UserProviderProps> = ({children}) => {
     useEffect(() => {
         (async() => {
             try {
-                const response = await AxiosInstance.get(`/api/auth`, {
+                const response = await AxiosInstance.get(`/api/user`, {
                     withCredentials: true,
                     headers : {
                         'Content-Type' : 'application/json'
