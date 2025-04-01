@@ -86,7 +86,7 @@ const getApiKeyDetails  = async(req : Request , res: Response) => {
             },
             include : {
                 user : true,
-                apikeyUsage : {
+                apikeyLogs : {
                     select : {
                         createdAt : true
                     },
@@ -108,10 +108,10 @@ const getApiKeyDetails  = async(req : Request , res: Response) => {
                 permission : 'Full',
                 shortToken : result.shortToken,
                 status : result.isActive,
-                totalUses : result.apikeyUsage.length, //Count of api being used
+                totalUses : result.apikeyLogs.length, //Count of api being used
                 userId : result.userId,
                 creatorEmail : result.user.email,
-                lastUsed : result.apikeyUsage[0]?.createdAt, // API Last used time 
+                lastUsed : result.apikeyLogs[0]?.createdAt, // API Last used time 
                 createdAt : result.createdAt 
         });
     } catch (error) {
@@ -134,7 +134,7 @@ const getAllApiKeys = async(req : Request , res: Response) => {
                 userId
             },
             include : {
-                apikeyUsage : {
+                apikeyLogs : {
                     select : {
                         createdAt : true
                     },
@@ -151,7 +151,7 @@ const getAllApiKeys = async(req : Request , res: Response) => {
                     id : item.id,
                     name : item.name,
                     shortToken : item.shortToken,
-                    lastUsed : item.apikeyUsage[0]?.createdAt, // API Last used time 
+                    lastUsed : item.apikeyLogs[0]?.createdAt, // API Last used time 
                     createdAt : item.createdAt
                 }
             })
@@ -310,4 +310,45 @@ const disableApiKey = async(req: Request , res: Response) => {
     }
 }
 
-export { createApiKey, getAllApiKeys, getApiKeyDetails, destroyApiKey, updateApiKeyName, disableApiKey }
+const getApiKeyLogs = async (req: Request, res: Response) => {
+    const userId = req.id as number;
+    try {
+        const result = await prisma.apiKeyLogs.findMany({
+            where : {
+                userId 
+            },
+            select : {
+                id : true,
+                method : true,
+                endpoint : true,
+                responseStatus: true,
+                createdAt : true
+            }
+        });
+        res.status(200).json(result);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+const getApiKeyLogDetails = async (req: Request, res: Response) => {
+    const userId = req.id as number;
+    const logId = req.params.id;
+    try {
+        const result = await prisma.apiKeyLogs.findMany({
+            where : {
+                id : logId,
+                userId
+            },
+            omit : {
+                apikeyId : true,
+                userId : true
+            }
+        });
+        res.status(200).json(result[0]);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+export { createApiKey, getAllApiKeys, getApiKeyDetails, destroyApiKey, updateApiKeyName, disableApiKey, getApiKeyLogs, getApiKeyLogDetails }
