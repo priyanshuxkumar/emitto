@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, Lock, Settings2 } from "lucide-react";
+import { Mail, Lock, Settings2, Logs } from "lucide-react";
 import { Button } from "./ui/button";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
@@ -19,10 +19,15 @@ const item = [
     link: "/apikeys",
   },
   {
+    icon: <Logs />,
+    title: "Logs",
+    link: "/logs",
+  },
+  {
     icon: <Settings2 />,
     title: "Settings",
     link: "/settings",
-  },
+  }
 ];
 
 export default function Sidebar() {
