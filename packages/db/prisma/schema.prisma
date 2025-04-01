@@ -27,6 +27,7 @@ model User {
 
   apikeys      ApiKey[]
   emails       Email[]
+  sms          Sms[]
   refreshToken RefreshToken[]
   feedbacks    Feedback[]
 
@@ -102,6 +103,18 @@ model Email {
 
   createdAt DateTime @default(now())
 }
+
+model Sms {
+  id       String   @id @default(uuid())
+  message  String
+  phoneNumber String
+  metadata Json // Response of email (eg : requestId , messageId)
+  userId   Int
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
 
 model Feedback {
   id        Int      @id @default(autoincrement())
