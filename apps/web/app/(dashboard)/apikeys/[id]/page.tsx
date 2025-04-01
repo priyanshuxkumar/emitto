@@ -99,16 +99,8 @@ export default function ApiKeyPage() {
                 <Key className="w-7 h-7 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-3xl font-bold">{data?.name}</h1>
-                  <Badge
-                    variant="outline"
-                    className="bg-emerald-950/50 text-emerald-400 border-emerald-800 px-2 py-0 h-5 text-xs"
-                  >
-                    {data?.status ? "Active" : "Not Active"}
-                  </Badge>
-                </div>
                 <p className="text-zinc-400 text-sm">API Key</p>
+                <h1 className="text-xl font-bold">{data?.name}</h1>
               </div>
             </div>
 
@@ -237,11 +229,7 @@ export default function ApiKeyPage() {
                     <Avatar>
                       <AvatarImage src={user?.userMetadata.avatarUrl} />
                       <AvatarFallback className="uppercase text-white text-xl font-semibold">
-                        {user?.userMetadata.name
-                          .split(" ")
-                          .map((n: string) => n[0])
-                          .join("")
-                          .toUpperCase()}
+                        {user?.userMetadata.name[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <p>{data?.creatorEmail}</p>

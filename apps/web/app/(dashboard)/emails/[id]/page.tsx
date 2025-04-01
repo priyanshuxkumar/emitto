@@ -2,7 +2,6 @@
 
 import EmailPreview from "@/components/EmailPreview";
 import Loader from "@/components/Loader";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import AxiosInstance from "@/utils/axiosInstance";
 import { ArrowLeft, Code, Mail } from "lucide-react";
@@ -80,16 +79,8 @@ export default function Page() {
                   <Mail className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-bold">haha</h1>
-                    <Badge
-                      variant="outline"
-                      className="bg-emerald-950/50 text-emerald-400 border-emerald-800 px-2 py-0 h-5 text-xs"
-                    >
-                      {false ? "Active" : "Not Active"}
-                    </Badge>
-                  </div>
-                  <p className="text-zinc-400 text-sm">API Key</p>
+                  <p className="text-zinc-400 text-sm">Email</p>
+                  <h1 className="text-xl font-bold">{data?.to}</h1>
                 </div>
               </div>
 
