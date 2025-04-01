@@ -1,13 +1,11 @@
 import { kafka } from "./client";
-import { TOPIC_SMS } from "./config";
-
-const TOPIC_EMAIL = "email-notification-events";
+import { TOPIC_EMAIL, TOPIC_SMS } from "./config";
 
 (async function init() {
     const admin = kafka.admin();
     console.log("Admin connecting...");
 
-    admin.connect();
+    await admin.connect();
     console.log("Admin Connection Success...");
 
     await admin.createTopics({
@@ -22,7 +20,7 @@ const TOPIC_EMAIL = "email-notification-events";
             }
         ]
     });
-    console.log(`Topic Created Success [${TOPIC_EMAIL}]`);
+    console.log(`Topic Created Success [${TOPIC_EMAIL}, ${TOPIC_SMS}]`);
     console.log("Disconnecting Admin..");
     await admin.disconnect();
 })();

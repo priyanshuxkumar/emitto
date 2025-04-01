@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
+    "kafka:init": "node dist/admin.js",
     "dev:email" : "tsc --watch & node dist/consumer.js email-group",
     "dev:sms" : "tsc --watch & node dist/consumer.js sms-group",
     "dev": "tsc --watch & node dist/consumer.js email-group & node dist/consumer.js sms-group",
