@@ -1,18 +1,19 @@
-import { Request, Response } from 'express';
-import { Prisma, prisma } from '@repo/db';
+import { NextFunction, Request, Response } from 'express';
+import { prisma } from '@repo/db';
 import { ApiKeyName, ParamsSchema } from '../types';
 import { genApiKey, generateHash } from '../helper';
-import { ZodError } from 'zod';
+import { HTTP_RESPONSE_CODE } from '../constants/constant';
+import { ApiError } from '../utils/ApiError';
+import { ApiResponse } from '../utils/ApiResponse';
 
-const createApiKey = async(req: Request , res: Response) => {
+const createApiKey = async(req: Request , res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
         const body = req.body;
         const parsedData = ApiKeyName.safeParse(body);
 
         if(!parsedData.success) {
-            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
 
         const isApiExist = await prisma.apiKey.findUnique({
@@ -23,8 +24,7 @@ const createApiKey = async(req: Request , res: Response) => {
         })
 
         if(isApiExist) {
-            res.status(409).json({message : "API key name already exists. Choose a different name"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "API already exist with same name");
         }
 
         const apiKey : string = genApiKey();
@@ -34,7 +34,7 @@ const createApiKey = async(req: Request , res: Response) => {
         }
 
         const hashApiKey = generateHash(apiKey);
-
+ 
         if (!hashApiKey) {
             throw new Error("Failed to hash API key");
         }
@@ -47,37 +47,29 @@ const createApiKey = async(req: Request , res: Response) => {
                 isActive: true,
                 shortToken: apiKey.slice(0,11)
             }
-        })
-
-        res.status(201).json({
-            message: "Api key created successfully. This key will not be shown again. Save it securely!", 
-            apiKey,
-            apiKeyMetadata : {
-                id : result.id,
-                name : result.name,
-                shortToken : result.shortToken,
-                lastUsed : null,
-                createdAt : result.createdAt
-            }
         });
+
+        res.status(HTTP_RESPONSE_CODE.CREATED).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.CREATED,
+                {
+                    apiKey,
+                    id : result.id,
+                    name : result.name,
+                    shortToken : result.shortToken,
+                    lastUsed : null,
+                    createdAt : result.createdAt
+                },
+                "API Created successfull"
+            )
+        );
     } catch (error : unknown) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === "P2025") {
-                res.status(404).json({ message: "API key not found or already deleted" });
-                return;
-            }
-        }
-
-        if (error instanceof ZodError) {
-            res.status(400).json({ message: "Invalid input", errors: error.errors });
-            return;
-        }
-
-        res.status(500).json({ message: "Something went wrong" });
+        next(error);
     }
 };
 
-const getApiKeyDetails  = async(req : Request , res: Response) => {
+const getApiKeyDetails  = async(req : Request , res: Response, next: NextFunction) => {
     const apiKeyId = req.params.id;
     try {
         const result = await prisma.apiKey.findFirst({
@@ -99,34 +91,33 @@ const getApiKeyDetails  = async(req : Request , res: Response) => {
         });
 
         if(!result) {
-            res.status(404).json({message : "API Key not found"});
-            return;
-        }
-        res.status(200).json({
-                id : result.id,
-                name : result.name,
-                permission : 'Full',
-                shortToken : result.shortToken,
-                status : result.isActive,
-                totalUses : result.apikeyLogs.length, //Count of api being used
-                userId : result.userId,
-                creatorEmail : result.user.email,
-                lastUsed : result.apikeyLogs[0]?.createdAt, // API Last used time 
-                createdAt : result.createdAt 
-        });
-    } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === "P2025") {
-                res.status(404).json({ message: "API key not found or already deleted" });
-                return;
-            }
+            throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "API Key not found");
         }
 
-        res.status(500).json({ message: "Something went wrong" });
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                {
+                    id : result.id,
+                    name : result.name,
+                    permission : 'Full',
+                    shortToken : result.shortToken,
+                    status : result.isActive,
+                    totalUses : result.apikeyLogs.length, //Count of api being used
+                    userId : result.userId,
+                    creatorEmail : result.user.email,
+                    lastUsed : result.apikeyLogs[0]?.createdAt, // API Last used time 
+                    createdAt : result.createdAt 
+                }
+            )
+        );
+    } catch (error) {
+        next(error);
     }
 }
 
-const getAllApiKeys = async(req : Request , res: Response) => {
+const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
         const result = await prisma.apiKey.findMany({
@@ -145,30 +136,29 @@ const getAllApiKeys = async(req : Request , res: Response) => {
                 },
             }
         });
-        res.status(200).json(
-            result.map(item => {
-                return {
-                    id : item.id,
-                    name : item.name,
-                    shortToken : item.shortToken,
-                    lastUsed : item.apikeyLogs[0]?.createdAt, // API Last used time 
-                    createdAt : item.createdAt
-                }
-            })
+        
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                result.map(item => {
+                    return {
+                        id : item.id,
+                        name : item.name,
+                        shortToken : item.shortToken,
+                        lastUsed : item.apikeyLogs[0]?.createdAt, // API Last used time 
+                        createdAt : item.createdAt
+                    }
+                })
+                
+            )
         );
     } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === "P2025") {
-                res.status(404).json({ message: "API key not found or already deleted" });
-                return;
-            }
-        }
-
-        res.status(500).json({ message: "Something went wrong" });
+        next(error);
     }
 }
 
-const destroyApiKey = async(req: Request , res: Response) => {
+const destroyApiKey = async(req: Request , res: Response, next: NextFunction) => {
     try {
         const parsedParams = ParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -185,8 +175,7 @@ const destroyApiKey = async(req: Request , res: Response) => {
         });
 
         if(!apikey) {
-            res.status(404).json({message: "Apikey not found or already deleted"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "API Key not found");
         }
 
         await prisma.apiKey.update({
@@ -198,25 +187,20 @@ const destroyApiKey = async(req: Request , res: Response) => {
             }
         });
 
-        res.status(200).json({message : "Apikey deleted successfully!"});
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                null,
+                "API deleted successfully"
+            )
+        );
     } catch (error) {
-         if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === "P2025") {
-                res.status(404).json({ message: "API key not found or already deleted" });
-                return;
-            }
-        }
-
-        if (error instanceof ZodError) {
-            res.status(400).json({ message: "Invalid input", errors: error.errors });
-            return;
-        }
-        
-        res.status(500).json({ message: "Something went wrong" });
+        next(error);
     }
 };
 
-const updateApiKeyName = async(req: Request , res: Response) => {
+const updateApiKeyName = async(req: Request , res: Response, next: NextFunction) => {
     try {
         const parsedParams = ParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -228,8 +212,7 @@ const updateApiKeyName = async(req: Request , res: Response) => {
         const parsedData = ApiKeyName.safeParse(body);
 
         if(!parsedData.success) {
-            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         };
 
         const result = await prisma.apiKey.findFirst({
@@ -239,44 +222,54 @@ const updateApiKeyName = async(req: Request , res: Response) => {
         });
 
         if(!result) {
-            res.status(404).json({message: "Apikey not found"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "API Key not found");
         }
 
-        await prisma.apiKey.update({
+        const apiKey = await prisma.apiKey.update({
             where : {
                 id : apikeyId
             },
             data: {
                 name: parsedData.data.name
+            },
+            include : {
+                apikeyLogs : {
+                    select : {
+                        createdAt : true
+                    },
+                    orderBy : {
+                        createdAt : 'desc'
+                    },
+                    take : 1
+                }
             }
         });
 
-        res.status(200).json({message : "Apikey updated successfully!"});
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                {
+                    id : apiKey.id,
+                    name : apiKey.name,
+                    shortToken : apiKey.shortToken,
+                    lastUsed : apiKey.apikeyLogs[0],
+                    createdAt : apiKey.createdAt
+                },
+                "API updated successfully"
+            )
+        );
     } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            if (error.code === "P2025") {
-                res.status(404).json({ message: "API key not found or already deleted" });
-                return;
-            }
-        }
-
-        if (error instanceof ZodError) {
-            res.status(400).json({ message: "Invalid input", errors: error.errors });
-            return;
-        }
-        
-        res.status(500).json({ message: "Something went wrong" });
+        next(error);
     }
 };
 
-const disableApiKey = async(req: Request , res: Response) => {
+const disableApiKey = async(req: Request , res: Response, next : NextFunction) => {
     const userId = req.id as number;
     try {
         const apiKeyId = req.params.id;
         if(!apiKeyId) {
-            res.status(400).json({message : "Api key is missing"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Invalid request");
         }
 
         const apikey = await prisma.apiKey.findUnique({
@@ -287,8 +280,7 @@ const disableApiKey = async(req: Request , res: Response) => {
         });
 
         if(!apikey) {
-            res.status(404).json({message : "Api key not found"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "API Key not found");
         }
 
         await prisma.apiKey.update({
@@ -300,17 +292,20 @@ const disableApiKey = async(req: Request , res: Response) => {
             }
         });
 
-        res.status(200).json({ message : "Api key has been disabled"});
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                null,
+                "API Key has been disabled"
+            )
+        );
     } catch (error) {
-        if(error instanceof Error) {
-            res.status(500).json({message : error.message});
-            return;
-        }
-        res.status(500).json({ message: "Something went wrong" });
+        next(error);
     }
 }
 
-const getApiKeyLogs = async (req: Request, res: Response) => {
+const getApiKeyLogs = async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
         const result = await prisma.apiKeyLogs.findMany({
@@ -325,13 +320,20 @@ const getApiKeyLogs = async (req: Request, res: Response) => {
                 createdAt : true
             }
         });
-        res.status(200).json(result);
+
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                result,
+            )
+        );
     } catch (error) {
-        console.error(error);
+        next(error);
     }
 }
 
-const getApiKeyLogDetails = async (req: Request, res: Response) => {
+const getApiKeyLogDetails = async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.id as number;
     const logId = req.params.id;
     try {
@@ -345,10 +347,25 @@ const getApiKeyLogDetails = async (req: Request, res: Response) => {
                 userId : true
             }
         });
-        res.status(200).json(result[0]);
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                result[0],
+            )
+        );
     } catch (error) {
-        console.error(error);
+        next(error);
     }
 }
 
-export { createApiKey, getAllApiKeys, getApiKeyDetails, destroyApiKey, updateApiKeyName, disableApiKey, getApiKeyLogs, getApiKeyLogDetails }
+export {
+  createApiKey,
+  getAllApiKeys,
+  getApiKeyDetails,
+  destroyApiKey,
+  updateApiKeyName,
+  disableApiKey,
+  getApiKeyLogs,
+  getApiKeyLogDetails,
+};

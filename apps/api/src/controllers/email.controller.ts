@@ -1,40 +1,30 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { EmailSchema, SendEmailSchema } from "../types";
 import { producer, TOPIC_EMAIL } from "@repo/kafka";
 import { isApiKeyValid } from "../helper";
-import { prisma, Prisma } from "@repo/db";
-import { ZodError } from "zod";
+import { prisma } from "@repo/db";
+import { HTTP_RESPONSE_CODE } from "../constants/constant";
+import { ApiError } from "../utils/ApiError";
+import { ApiResponse } from "../utils/ApiResponse";
 
-const sendEmail = async(req: Request, res: Response) => {
+const sendEmail = async(req: Request, res: Response, next: NextFunction) => {
     try {
         const body = req.body;
         const parsedData = SendEmailSchema.safeParse(body);
         if(!parsedData.success) {
-            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         };
         
         const apiKey = req.headers['x-api-key'];
         if(!apiKey) {
-            res.status(401).json({message: "Missing Api Key"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Invalid request");
         };
 
         let apiKeyId : string;
         let userId : number;
-        try {
-            const { apiKeyId : apikey_id, userId: user_id } = await isApiKeyValid(apiKey as string);
-            apiKeyId = apikey_id;
-            userId = user_id;
-        } catch (error) {
-            if(error instanceof Error){
-                res.status(500).json({ message : error?.message });
-                return;
-            } else {
-                res.status(500).json({ message : "Something went wrong"});
-                return;
-            }
-        };
+
+        ({ apiKeyId, userId } = await isApiKeyValid(apiKey as string));
+
 
         //Create the entry about API usage / Logs
         const method = req.method;
@@ -60,27 +50,27 @@ const sendEmail = async(req: Request, res: Response) => {
                 }),
             }]
         });
-        res.status(200).json({message : "Email processing..."});
+
+
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                null,
+                "Email processing"
+            )
+        );
     } catch (error) {
-        if(error instanceof Prisma.PrismaClientUnknownRequestError) {
-            res.status(500).json({ message : error.message}) 
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({ message : error.message || "Something went wrong"});
-            return;
-        }
-        res.status(500).json({ message : "Something went wrong"});
+        next(error);
     }
 }
 
-const checkEmailUnique =  async(req: Request, res: Response) => {
+const checkEmailUnique =  async(req: Request, res: Response, next: NextFunction) => {
     try {
         const email = req.body.email;
         const parsedEmail = EmailSchema.safeParse(email);
         if(!parsedEmail.data) {
-            res.status(400).json({message: parsedEmail?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedEmail?.error?.issues[0]?.message ?? "Invalid Input");
         }
 
         const isEmailExist = await prisma.user.count({
@@ -89,63 +79,57 @@ const checkEmailUnique =  async(req: Request, res: Response) => {
             },
             take: 1 // Stop counting after first match found
         });
-
         if(isEmailExist) {
-            res.status(200).json({status: false, message : "Email already exists"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Email already exists");
         } 
-        res.status(200).json({status: true, message : "Email is available"})
+
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                null,
+                "Email is available"
+            )
+        );
     } catch (error) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(404).json({message: "User not found"});
-            return;
-        }
-        if(error instanceof ZodError) {
-            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : 'Something went wrong'}); 
+        next(error); 
     }
 }
 
-const getAllEmail = async(req: Request, res: Response) => {
+const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
     const userId = req.id as number
     try {
         const result = await prisma.email.findMany({
             where : {
                 userId
+            },
+            orderBy : {
+                createdAt : 'desc'
             }
-        })
+        });
 
-        res.status(200).json(
-            result.map(item => {
-                return {
-                    id : item.id,
-                    to : item.to,
-                    status : 'Delivered',
-                    subject : item.subject,
-                    sentTime : item.createdAt
-                }
-            })
-        )
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                result.map(item => {
+                    return {
+                        id : item.id,
+                        to : item.to,
+                        status : 'Delivered',
+                        subject : item.subject,
+                        sentTime : item.createdAt
+                    }
+                }),
+                "Email is available"
+            )
+        );
     } catch (error) {
-        if(error instanceof Prisma.PrismaClientUnknownRequestError) {
-            res.status(500).json({ message : error.message}) 
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({ message : error.message || "Something went wrong"});
-            return;
-        }
-        res.status(500).json({ message : "Something went wrong"});
+        next(error);
     }
 }
 
-const getEmailDetails = async (req: Request, res: Response) => {
+const getEmailDetails = async (req: Request, res: Response, next: NextFunction) => {
     const emailId = req.params.id;
     try {
         const result = await prisma.email.findUnique({
@@ -154,20 +138,18 @@ const getEmailDetails = async (req: Request, res: Response) => {
             }
         });
         if(!result) {
-            res.status(404).json({ message : "Email not found" });
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Email not found")
         }
-        res.status(200).json(result);
+
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                result,
+            )
+        );
     } catch (error) {
-        if(error instanceof Prisma.PrismaClientUnknownRequestError) {
-            res.status(500).json({ message : error.message}) 
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({ message : error.message || "Something went wrong"});
-            return;
-        }
-        res.status(500).json({ message : "Something went wrong"});
+        next(error)
     }
 }
 

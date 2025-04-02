@@ -1,28 +1,28 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import bcrypt from "bcryptjs";
 import { config, cookieOptions } from '../config';
-import { ZodError } from 'zod';
 import { SigninSchema, SignupSchema } from '../types';
-import { Prisma, prisma, User } from '@repo/db';
+import { prisma, User } from '@repo/db';
 import { genAccessAndRefreshToken } from '../helper';
+import { ApiError } from '../utils/ApiError';
+import { HTTP_RESPONSE_CODE } from '../constants/constant';
+import { ApiResponse } from '../utils/ApiResponse';
 
-const registerUser = async(req: Request , res: Response) => {
+const registerUser = async(req: Request , res: Response, next : NextFunction) => {
     try {
         const body = req.body;
         const parsedData = SignupSchema.safeParse(body)
         if(!parsedData.success){
-            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
+
         const user : User | null = await prisma.user.findFirst({
             where: {
                 email: parsedData.data.email
             }
-        })
-
+        });
         if(user){
-            res.status(409).json({message: 'User already exists with this email'})
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "User already exists");
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -37,33 +37,25 @@ const registerUser = async(req: Request , res: Response) => {
                     }
                 }
             }
-        })
+        });
 
-        res.status(200).json({message: "Check your inbox for verification email!"})
+        res.status(HTTP_RESPONSE_CODE.CREATED).json(new ApiResponse(
+            true, 
+            HTTP_RESPONSE_CODE.CREATED, 
+            null,
+            "Check your inbox for verification email!"
+        ));
     } catch (error : unknown) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(409).json({message: "User already exists with this email"});
-            return;
-        }
-        if(error instanceof ZodError) {
-            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : 'Something went wrong'});   
+        next(error); 
     }
 }
 
-const loginUser = async(req: Request , res: Response) => {
+const loginUser = async(req: Request, res: Response, next: NextFunction ) => {
     try {
         const body = req.body;
         const parsedData = SigninSchema.safeParse(body)
         if(!parsedData.success){
-            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
 
         const user = await prisma.user.findFirst({
@@ -80,18 +72,16 @@ const loginUser = async(req: Request , res: Response) => {
                 },
                 role: true
             }
-        })
+        });
         if(!user){
-            res.status(404).json({message : 'Invalid Credentials'});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "User not found")
         }
 
         const hashPassword: string = String(user.password?.hash);
 
-        const isPasswordCorrect = await bcrypt.compare(parsedData.data.password , hashPassword)
+        const isPasswordCorrect = await bcrypt.compare(parsedData.data.password , hashPassword);
         if(!isPasswordCorrect){
-            res.status(403).json({message: 'Invalid Credentials'});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.UNAUTHORIZED, "Invalid Credentials");
         }
 
         const { accessToken, refreshToken } = await genAccessAndRefreshToken(user.id , user.role);
@@ -111,26 +101,18 @@ const loginUser = async(req: Request , res: Response) => {
 
         res.cookie('_a_token_', accessToken, cookieOptions);
         res.cookie('_r_token_', refreshToken, {...cookieOptions, maxAge: 1000 * 60 * 60 * 24 * 7});
-
-        res.status(200).json({message: 'Signin successfull!'})
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(new ApiResponse(
+            true,
+            HTTP_RESPONSE_CODE.SUCCESS,
+            null,
+            "Signin successfull"
+        ));
     } catch (error : unknown) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(404).json({message: "User not found"});
-            return;
-        }
-        if(error instanceof ZodError) {
-            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : 'Something went wrong'}); 
+        next(error);
     }
 }
 
-const logoutUser = async(req: Request , res: Response) =>  {
+const logoutUser = async(req: Request , res: Response, next: NextFunction) =>  {
     try {
         res.clearCookie("_a_token_");
         res.clearCookie("_r_token_");
@@ -148,18 +130,14 @@ const logoutUser = async(req: Request , res: Response) =>  {
 
         res.clearCookie("_a_token_");     
         res.clearCookie("_r_token_");        
-
-        res.status(200).json({message: "Logout successfull"});
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(new ApiResponse(
+            true,
+            HTTP_RESPONSE_CODE.SUCCESS,
+            null,
+            "Logout successfull"
+        ));
     } catch (error : unknown) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(404).json({message: "User not found"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : "Something went wrong"});    
+       next(error);  
     }
 }
 

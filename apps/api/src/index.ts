@@ -9,6 +9,7 @@ import { emailRouter } from './routes/email.route';
 import { feedbackRouter } from './routes/feedback.route';
 import { userRouter } from './routes/user.route';
 import { smsRouter } from './routes/sms.route';
+import { errorMiddleware } from './middleware/error.middleware';
 
 export const app = express();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors(corsOptions));
 
+//Routes
 app.use('/api/auth', authRouter);
 app.use('/api/user', userRouter);
 app.use('/api/apikey', apiRouter);
@@ -23,3 +25,5 @@ app.use('/api/emails', emailRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/sms', smsRouter);
 
+//Error middleware
+app.use(errorMiddleware);

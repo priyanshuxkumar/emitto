@@ -88,8 +88,8 @@ async function genAccessAndRefreshToken(userId: number, role: string) {
     }
 
   } catch (error) {
-    throw new Error("Something went wrong while generating access and refresh tokens");
+    throw error;
   }
 }
 
-export {generateHash, genApiKey, isApiKeyValid, genAccessAndRefreshToken }
+export { generateHash, genApiKey, isApiKeyValid, genAccessAndRefreshToken };

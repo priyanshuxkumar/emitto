@@ -1,9 +1,11 @@
-import { Request, Response } from 'express';
-import { ZodError } from 'zod';
-import { Prisma, prisma, User } from '@repo/db';
+import { NextFunction, Request, Response } from 'express';
+import { prisma, User } from '@repo/db';
 import { UpdateUserDetailsSchema } from '../types';
+import { ApiError } from '../utils/ApiError';
+import { HTTP_RESPONSE_CODE } from '../constants/constant';
+import { ApiResponse } from '../utils/ApiResponse';
 
-const getUser = async(req: Request , res: Response) =>  {
+const getUser = async(req: Request , res: Response, next: NextFunction) =>  {
     const userId = req.id as number;
     try {
         const user : User | null = await prisma.user.findFirst({
@@ -13,42 +15,38 @@ const getUser = async(req: Request , res: Response) =>  {
         })
 
         if(!user) {
-            res.status(404).json({message : "User not found"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "User not found");
         }
 
-        res.status(200).json({
-                id: user.id,
-                email : user.email,
-                userMetadata : {
-                    name : user.name,
-                    avatarUrl: user.avatarUrl,
+
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                {
+                    id: user.id,
                     email : user.email,
-                    emailVerified: user.verified
-                }
-            }
-        )
+                    userMetadata : {
+                        name : user.name,
+                        avatarUrl: user.avatarUrl,
+                        email : user.email,
+                        emailVerified: user.verified
+                    }
+                },
+            )
+        );
     } catch (error : unknown) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(404).json({message: "User not found"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : 'Something went wrong'}); 
+        next(error);
     }
 }
 
-const updateUserDetails = async(req: Request , res: Response) => {
+const updateUserDetails = async(req: Request , res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
         const body = req.body;
         const parsedData = UpdateUserDetailsSchema.safeParse(body);
         if(!parsedData.success){
-            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
 
         const updatedUser = await prisma.user.update({
@@ -60,21 +58,19 @@ const updateUserDetails = async(req: Request , res: Response) => {
             }
         });
 
-        res.status(200).json({message : "Update successfull", email : updatedUser.email, name : updatedUser.name});
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+            new ApiResponse(
+                true,
+                HTTP_RESPONSE_CODE.SUCCESS,
+                {
+                    email : updatedUser.email, 
+                    name : updatedUser.name
+                },
+                "Update successfull"
+            )
+        );
     } catch (error) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(404).json({message: "User not found"});
-            return;
-        }
-        if(error instanceof ZodError) {
-            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : 'Something went wrong'}); 
+        next(error);
     }
 }
 

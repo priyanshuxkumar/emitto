@@ -1,16 +1,17 @@
-import { Request, Response } from 'express';
-import { ZodError } from 'zod';
+import { NextFunction, Request, Response } from 'express';
 import { SubmitFeedbackSchema } from '../types';
-import { Prisma, prisma} from '@repo/db';
+import { prisma} from '@repo/db';
+import { HTTP_RESPONSE_CODE } from '../constants/constant';
+import { ApiError } from '../utils/ApiError';
+import { ApiResponse } from '../utils/ApiResponse';
 
-const submitFeedback = async(req : Request , res: Response) => {
+const submitFeedback = async(req : Request , res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
         const body = req.body;
         const parsedData = SubmitFeedbackSchema.safeParse(body);
         if(!parsedData.success) {
-            res.status(400).json({message: parsedData?.error?.issues[0]?.message ?? "Invalid Input"});
-            return;
+            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
 
         await prisma.feedback.create({
@@ -19,21 +20,15 @@ const submitFeedback = async(req : Request , res: Response) => {
                 userId
             }
         });
-        res.status(201).json({message : 'Feedback submit successfully'});
+
+        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(new ApiResponse(
+            true,
+            HTTP_RESPONSE_CODE.SUCCESS,
+            null,
+            "Feedback submit successfully"
+        ));
     } catch (error) {
-        if(error instanceof Prisma.PrismaClientKnownRequestError) {
-            res.status(409).json({message: "User already exists with this email"});
-            return;
-        }
-        if(error instanceof ZodError) {
-            res.status(400).json({message: error.errors[0]?.message || "Invalid input"});
-            return;
-        }
-        if(error instanceof Error) {
-            res.status(500).json({message: error.message});
-            return;
-        }
-        res.status(500).json({message : 'Something went wrong'}); 
+        next(error);
     }
 }
 
