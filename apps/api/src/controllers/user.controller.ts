@@ -15,9 +15,8 @@ const getUser = async(req: Request , res: Response, next: NextFunction) =>  {
         })
 
         if(!user) {
-            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "User not found");
+            throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "User not found");
         }
-
 
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(

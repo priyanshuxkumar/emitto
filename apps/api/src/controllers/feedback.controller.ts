@@ -13,7 +13,6 @@ const submitFeedback = async(req : Request , res: Response, next: NextFunction) 
         if(!parsedData.success) {
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
-
         await prisma.feedback.create({
             data : {
                 ...parsedData.data,
