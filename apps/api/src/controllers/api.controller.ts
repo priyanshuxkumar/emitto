@@ -24,7 +24,7 @@ const createApiKey = async(req: Request , res: Response, next: NextFunction) => 
         })
 
         if(isApiExist) {
-            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "API already exist with same name");
+            throw new ApiError(false, HTTP_RESPONSE_CODE.CONFLICT, "API already exist with same name");
         }
 
         const apiKey : string = genApiKey();

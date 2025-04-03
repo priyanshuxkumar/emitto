@@ -25,7 +25,7 @@ export const SigninSchema = z.object({
 });
 
 export const ApiKeyName = z.object({
-  name: z.string(),
+  name: z.string().trim().nonempty("Field cannot be empty"),
 });
 
 export const ParamsSchema = z.object({

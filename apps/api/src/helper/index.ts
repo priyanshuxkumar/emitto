@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
 import { prisma } from "@repo/db";
+import { ApiError } from "../utils/ApiError";
+import { HTTP_RESPONSE_CODE } from "../constants/constant";
 
 function generateHash(value : string) : string {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -23,7 +25,7 @@ function genApiKey() : string {
 
     return apiKey;
   } catch (error: unknown) {
-    throw (error);
+    throw error;
   }
 }
 
@@ -45,11 +47,11 @@ async function isApiKeyValid(apiKey : string) : Promise<{ apiKeyId: string, user
       });
 
       if(!result) {
-        throw new Error("Incorrect Api Key");
+        throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "API Key not found or Invalid");
       }
 
       if(!result.isActive) {
-        throw new Error("Api Key is not active");
+        throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Api Key is not active");
       }
 
       if(result.expiresAt) { 
@@ -57,12 +59,12 @@ async function isApiKeyValid(apiKey : string) : Promise<{ apiKeyId: string, user
         const currentTime = Date.now();
         
         if(expirationTime < currentTime){
-          throw new Error("Api Key has been expired");
+          throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Api Key has been expired");
         }
       }
 
-      if(!verifyHash(apiKey, result.apikey)) {
-        throw new Error("Invalid Api Key");
+      if(!verifyHash(String(apiKey), String(result.apikey))) {
+        throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Invalid Api Key");
       }
 
       return {
@@ -92,4 +94,4 @@ async function genAccessAndRefreshToken(userId: number, role: string) {
   }
 }
 
-export { generateHash, genApiKey, isApiKeyValid, genAccessAndRefreshToken };
+export { generateHash, verifyHash, genApiKey, isApiKeyValid, genAccessAndRefreshToken };

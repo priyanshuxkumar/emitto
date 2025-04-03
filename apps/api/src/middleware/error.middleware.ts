@@ -18,47 +18,42 @@ export const errorMiddleware = (
       .status(err.statusCode)
       .json({ success: err.success, message: err.message });
     return;
-  }
-
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+  } 
+  else if (err instanceof Error) {
+    res
+      .status(HTTP_RESPONSE_CODE.SERVER_ERROR)
+      .json({ success: false, message: err.message });
+    return;
+  } 
+  else if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === "P2025") {
       res
         .status(HTTP_RESPONSE_CODE.NOT_FOUND)
         .json({ success: false, message: "Data not found" });
       return;
     }
-
-    res.status(HTTP_RESPONSE_CODE.BAD_REQUEST).json({
+    res.status(HTTP_RESPONSE_CODE.SERVER_ERROR).json({
       success: false,
       message: "Database error",
     });
     return;
-  }
-
-  if (err instanceof ZodError) {
+  } 
+  else if (err instanceof ZodError) {
     res.status(HTTP_RESPONSE_CODE.BAD_REQUEST).json({
       success: false,
       message: err?.issues[0]?.message || "Invalid input",
     });
     return;
-  }
-
-  if (err instanceof JsonWebTokenError) {
+  } 
+  else if (err instanceof JsonWebTokenError) {
     res
       .status(HTTP_RESPONSE_CODE.UNAUTHORIZED)
       .json({ success: false, message: "Unauthorized access" });
     return;
-  }
-
-  if (err instanceof Error) {
+  } 
+  else {
     res
       .status(HTTP_RESPONSE_CODE.SERVER_ERROR)
-      .json({ success: false, message: err.message });
-    return;
+      .json({ success: false, message: "Something went wrong" });
   }
-
-  res
-    .status(HTTP_RESPONSE_CODE.SERVER_ERROR)
-    .json({ success: false, message: "Something went wrong" });
-  return;
 };
