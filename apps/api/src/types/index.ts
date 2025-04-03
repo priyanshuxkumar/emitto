@@ -20,7 +20,7 @@ export const SignupSchema = z.object({
 });
 
 export const SigninSchema = z.object({
-  email: EmailSchema.optional(),
+  email: EmailSchema,
   password: PasswordSchema,
 });
 
@@ -33,14 +33,14 @@ export const ParamsSchema = z.object({
 });
 
 export const SendEmailSchema = z.object({
-  from: z.string(),
+  from: z.string().trim(),
   to: z.array(z.string()) ,
   subject: z.string(),
   html: z.string().optional(),
 });
 
 export const SubmitFeedbackSchema = z.object({
-  comment : z.string()
+  comment : z.string().trim().nonempty("Comment can not be empty")
 });
 
 export const UpdateUserDetailsSchema =  z.object({
