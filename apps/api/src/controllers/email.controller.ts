@@ -6,6 +6,8 @@ import { prisma } from "@repo/db";
 import { HTTP_RESPONSE_CODE } from "../constants/constant";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
+import { getAllEmailsKey, getEmailDetailsKey } from "../services/redis/keys";
+import { redis } from "../services/redis";
 
 const sendEmail = async(req: Request, res: Response, next: NextFunction) => {
     try {
@@ -65,48 +67,46 @@ const sendEmail = async(req: Request, res: Response, next: NextFunction) => {
     }
 }
 
-const checkEmailUnique =  async(req: Request, res: Response, next: NextFunction) => {
+const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
+    const userId = req.id as number;
     try {
-        const email = req.body.email;
-        const parsedEmail = EmailSchema.safeParse(email);
-        if(!parsedEmail.data) {
-            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedEmail?.error?.issues[0]?.message ?? "Invalid Input");
+        let allEmailsKey =  getAllEmailsKey(userId as number);
+
+        const cache = await redis.lRange(allEmailsKey, 0 , 20);
+        if(cache.length > 0) {
+            console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+
+            res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+                new ApiResponse(
+                    true,
+                    HTTP_RESPONSE_CODE.SUCCESS,
+                    cache.map(item => JSON.parse(item)),
+                )
+            )
+            return;
         }
 
-        const isEmailExist = await prisma.user.count({
-            where : {
-                email
-            },
-            take: 1 // Stop counting after first match found
-        });
-        if(isEmailExist) {
-            throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Email already exists");
-        } 
-
-        res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
-            new ApiResponse(
-                true,
-                HTTP_RESPONSE_CODE.SUCCESS,
-                null,
-                "Email is available"
-            )
-        );
-    } catch (error) {
-        next(error); 
-    }
-}
-
-const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
-    const userId = req.id as number
-    try {
         const result = await prisma.email.findMany({
             where : {
                 userId
             },
             orderBy : {
                 createdAt : 'desc'
-            }
+            },
+            take : 20
         });
+
+        await redis.rPush(allEmailsKey, result.map(item => JSON.stringify(
+            {
+                id : item.id,
+                to : item.to,
+                status : 'Delivered',
+                subject : item.subject,
+                sentTime : item.createdAt
+            }
+        )));
+
+        console.log(`Cache miss for ${req.baseUrl}${req.path}`);
 
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
@@ -132,6 +132,29 @@ const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
 const getEmailDetails = async (req: Request, res: Response, next: NextFunction) => {
     const emailId = req.params.id;
     try {
+        let emailDetailskey = getEmailDetailsKey(emailId as string);
+
+        const cache = await redis.hGetAll(emailDetailskey);
+        if(cache && Object.keys(cache).length > 0) {
+            console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+            res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+                new ApiResponse(
+                    true,
+                    HTTP_RESPONSE_CODE.SUCCESS,
+                    {
+                        id: cache.id,
+                        from: cache.from,
+                        to: JSON.parse(cache.to as string),
+                        subject: cache.subject,
+                        html: cache.html,
+                        metadata: JSON.parse(cache.metadata as string),
+                        userId: Number(cache.userId),
+                        createdAt: new Date(cache.createdAt as string)
+                    },
+                )
+            )
+            return;
+        }
         const result = await prisma.email.findUnique({
             where : {
                 id : emailId
@@ -140,6 +163,19 @@ const getEmailDetails = async (req: Request, res: Response, next: NextFunction) 
         if(!result) {
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Email not found")
         }
+
+        await redis.hSet(emailDetailskey, {
+            id: result.id,
+            from: result.from,
+            to: JSON.stringify(result.to),
+            subject: result.subject,
+            html: result.html,
+            metadata: JSON.stringify(result.metadata),
+            userId: result.userId.toString(),
+            createdAt: result.createdAt.toISOString()
+        });
+
+        console.log(`Cache miss for ${req.baseUrl}${req.path}`);
 
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
@@ -153,4 +189,4 @@ const getEmailDetails = async (req: Request, res: Response, next: NextFunction) 
     }
 }
 
-export { sendEmail, checkEmailUnique, getAllEmail, getEmailDetails }
+export { sendEmail, getAllEmail, getEmailDetails }
