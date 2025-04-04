@@ -5,6 +5,8 @@ import { genApiKey, generateHash } from '../helper';
 import { HTTP_RESPONSE_CODE } from '../constants/constant';
 import { ApiError } from '../utils/ApiError';
 import { ApiResponse } from '../utils/ApiResponse';
+import { redis } from '../services/redis';
+import { getApiKeyDetailsKey, getAllApiKeysKey, getApiKeyLogsKey, getApiKeyLogDetailsKey } from '../services/redis/keys';
 
 const createApiKey = async(req: Request , res: Response, next: NextFunction) => {
     const userId = req.id as number;
@@ -49,6 +51,19 @@ const createApiKey = async(req: Request , res: Response, next: NextFunction) => 
             }
         });
 
+        // Add new data to existing data on List
+        const key = getAllApiKeysKey(userId);
+        await redis.lPush(
+            key,
+            JSON.stringify({
+              id: result.id,
+              name: result.name,
+              shortToken: result.shortToken,
+              lastUsed: null,
+              createdAt: result.createdAt,
+            })
+        );
+
         res.status(HTTP_RESPONSE_CODE.CREATED).json(
             new ApiResponse(
                 true,
@@ -72,13 +87,39 @@ const createApiKey = async(req: Request , res: Response, next: NextFunction) => 
 const getApiKeyDetails  = async(req : Request , res: Response, next: NextFunction) => {
     const apiKeyId = req.params.id;
     try {
+        let key = getApiKeyDetailsKey(apiKeyId as string);
+
+        // Check the cache exist
+        const cache = await redis.hGetAll(key);
+        if(cache && Object.keys(cache).length > 0)  {
+            console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+            res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+                new ApiResponse(
+                    true,
+                    HTTP_RESPONSE_CODE.SUCCESS,
+                    {
+                        id: cache.id,
+                        name: cache.name,
+                        permission: cache.permission,
+                        shortToken: cache.shortToken,
+                        status: Boolean(cache.status),
+                        totalUses: Number(cache.totalUses),
+                        userId: Number(cache.userId),
+                        creatorEmail: cache.creatorEmail,
+                        lastUsed: new Date(cache.lastUsed as string),
+                        createdAt: new Date(cache.createdAt as string),
+                    }
+                )
+            );
+            return;
+        }
         const result = await prisma.apiKey.findFirst({
             where : {
                 id : apiKeyId
             },
             include : {
                 user : true,
-                apikeyLogs : {
+                apikeyLogs : { // Last used log
                     select : {
                         createdAt : true
                     },
@@ -87,12 +128,31 @@ const getApiKeyDetails  = async(req : Request , res: Response, next: NextFunctio
                     },
                     take : 1
                 },
+            },
+            orderBy : {
+                createdAt : "desc"
             }
         });
 
         if(!result) {
             throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "API Key not found");
         }
+
+        // Cache the data
+        await redis.hSet(key, {
+            id : result.id,
+            name : result.name,
+            permission : result.permission,
+            shortToken : result.shortToken,
+            status : result.isActive.toString(),
+            totalUses : result.apikeyLogs.length,
+            userId : result.userId,
+            creatorEmail : result.user.email,
+            lastUsed: result.apikeyLogs[0]?.createdAt?.toISOString() || '',
+            createdAt: result.createdAt.toISOString(),    
+        });
+
+        console.log(`Cache miss for ${req.baseUrl}${req.path}`);
 
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
@@ -101,7 +161,7 @@ const getApiKeyDetails  = async(req : Request , res: Response, next: NextFunctio
                 {
                     id : result.id,
                     name : result.name,
-                    permission : 'Full',
+                    permission : result.permission,
                     shortToken : result.shortToken,
                     status : result.isActive,
                     totalUses : result.apikeyLogs.length, //Count of api being used
@@ -120,6 +180,22 @@ const getApiKeyDetails  = async(req : Request , res: Response, next: NextFunctio
 const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
+        const key = getAllApiKeysKey(userId);
+
+        // Check the cache exist
+        const cache = await redis.lRange(key, 0 , 19);
+        if(cache.length > 0) {
+            console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+            res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+                new ApiResponse(
+                    true,
+                    HTTP_RESPONSE_CODE.SUCCESS,
+                    cache.map(item => JSON.parse(item)),
+                )
+            )
+            return;
+        };
+
         const result = await prisma.apiKey.findMany({
             where : {
                 userId
@@ -136,6 +212,21 @@ const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) =
                 },
             }
         });
+
+        // Cache the data
+        if(result.length > 0) {
+            await redis.rPush(key, result.map(item => JSON.stringify(
+                {
+                    id : item.id,
+                    name : item.name,
+                    shortToken : item.shortToken,
+                    lastUsed : item.apikeyLogs[0]?.createdAt || null,
+                    createdAt : item.createdAt
+                }
+            )));
+        }
+
+        console.log(`Cache miss for ${req.baseUrl}${req.path}`);
         
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
@@ -308,6 +399,22 @@ const disableApiKey = async(req: Request , res: Response, next : NextFunction) =
 const getApiKeyLogs = async (req: Request, res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
+        const key = getApiKeyLogsKey(userId);
+
+        // Check the cache exist
+        const cache = await redis.lRange(key, 0 , 19);
+        if(cache.length > 0) {
+            console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+            res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+                new ApiResponse(
+                    true,
+                    HTTP_RESPONSE_CODE.SUCCESS,
+                    cache.map(item => JSON.parse(item)),
+                )
+            )
+            return;
+        }
+
         const result = await prisma.apiKeyLogs.findMany({
             where : {
                 userId 
@@ -318,8 +425,25 @@ const getApiKeyLogs = async (req: Request, res: Response, next: NextFunction) =>
                 endpoint : true,
                 responseStatus: true,
                 createdAt : true
+            },
+            orderBy : {
+                createdAt : "desc"
             }
         });
+
+        // Cache the data
+        if(result.length > 0) {
+            await redis.rPush(key, result.map(item => JSON.stringify(
+                {
+                    id: item.id,
+                    method: item.method,
+                    endpoint: item.endpoint,
+                    responseStatus: item.responseStatus,
+                    createdAt: item.createdAt
+                }
+            )))
+        }
+        console.log(`Cache miss for ${req.baseUrl}${req.path}`);
 
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
@@ -337,21 +461,62 @@ const getApiKeyLogDetails = async (req: Request, res: Response, next: NextFuncti
     const userId = req.id as number;
     const logId = req.params.id;
     try {
-        const result = await prisma.apiKeyLogs.findMany({
+        // Check the cache exist
+        const key = getApiKeyLogDetailsKey(logId as string);
+
+        const cache = await redis.hGetAll(key);
+        if(cache && Object.keys(cache).length > 0) {
+            console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+            res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
+                new ApiResponse(
+                    true,
+                    HTTP_RESPONSE_CODE.SUCCESS,
+                    {
+                        id: cache.id,
+                        method: cache.method,
+                        endpoint: cache.endpoint,
+                        responseStatus: Number(cache.responseStatus),
+                        requestBody: JSON.parse(cache.requestBody as string),
+                        responseBody: JSON.parse(cache.responseBody as string),
+                        createdAt: new Date(cache.createdAt as string),
+                    }
+                )
+            );
+            return;
+        }
+
+        const result = await prisma.apiKeyLogs.findUnique({
             where : {
                 id : logId,
                 userId
             },
-            omit : {
+            omit : { //Removing fields from result
                 apikeyId : true,
                 userId : true
             }
         });
+
+        if(!result) {
+            throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "API key log not found")
+        }
+
+        // Cache the data
+        await redis.hSet(key, {
+            id: result.id,
+            method: result.method,
+            endpoint: result.endpoint,
+            responseStatus: String(result.responseStatus),
+            requestBody: JSON.stringify(result.requestBody),
+            responseBody: JSON.stringify(result.responseBody),
+            createdAt: result.createdAt.toISOString(),
+        });
+        console.log(`Cache miss for ${req.baseUrl}${req.path}`);
+
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
                 true,
                 HTTP_RESPONSE_CODE.SUCCESS,
-                result[0],
+                result,
             )
         );
     } catch (error) {
