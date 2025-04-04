@@ -1,6 +1,6 @@
 import crypto from "crypto";
-import { randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
+import { randomUUID } from "crypto";
 import { config } from "../config";
 import { prisma } from "@repo/db";
 import { ApiError } from "../utils/ApiError";
@@ -61,10 +61,6 @@ async function isApiKeyValid(apiKey : string) : Promise<{ apiKeyId: string, user
         if(expirationTime < currentTime){
           throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Api Key has been expired");
         }
-      }
-
-      if(!verifyHash(String(apiKey), String(result.apikey))) {
-        throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Invalid Api Key");
       }
 
       return {
