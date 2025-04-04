@@ -55,11 +55,12 @@ model RefreshToken {
 }
 
 model ApiKey {
-  id         String    @id @default(uuid())
-  name       String    @unique
+  id         String            @id @default(uuid())
+  name       String            @unique
   shortToken String
-  apikey     String    @unique() //Hashed form
-  isActive   Boolean   @default(true)
+  apikey     String            @unique() //Hashed form
+  isActive   Boolean           @default(true)
+  permission ApiKeyPermissions @default(FullAccess)
   expiresAt  DateTime?
 
   userId Int
@@ -82,8 +83,8 @@ model ApiKeyLogs {
   requestBody    Json?
   responseBody   Json?
 
-  apikeyId       String
-  apikey         ApiKey @relation(fields: [apikeyId], references: [id])
+  apikeyId String
+  apikey   ApiKey @relation(fields: [apikeyId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -105,16 +106,15 @@ model Email {
 }
 
 model Sms {
-  id       String   @id @default(uuid())
-  message  String
+  id          String @id @default(uuid())
+  message     String
   phoneNumber String
-  metadata Json // Response of email (eg : requestId , messageId)
-  userId   Int
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metadata    Json // Response of email (eg : requestId , messageId)
+  userId      Int
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
-
 
 model Feedback {
   id        Int      @id @default(autoincrement())
@@ -127,4 +127,9 @@ model Feedback {
 enum UserPermissionRole {
   USER
   ADMIN
+}
+
+enum ApiKeyPermissions {
+  FullAccess
+  SendingAccess
 }
