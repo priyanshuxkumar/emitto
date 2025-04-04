@@ -10,9 +10,9 @@ import { getLoggedInUserKey } from '../services/redis/keys';
 const getUser = async(req: Request , res: Response, next: NextFunction) =>  {
     const userId = req.id as number;
     try {
-        let userKey = getLoggedInUserKey(userId as number); 
+        let key = getLoggedInUserKey(userId as number); 
 
-        const cache = await redis.hGetAll(userKey);
+        const cache = await redis.hGetAll(key);
         if(cache && Object.keys(cache).length > 0) {
             console.log(`Cache hit for ${req.baseUrl}${req.path}`);
             res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
@@ -50,7 +50,7 @@ const getUser = async(req: Request , res: Response, next: NextFunction) =>  {
             })
         }
 
-        await redis.hSet(userKey, data);
+        await redis.hSet(key, data);
 
         console.log(`Cache miss for ${req.baseUrl}${req.path}`);
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
@@ -88,8 +88,8 @@ const updateUserDetails = async(req: Request , res: Response, next: NextFunction
         });
 
         //Update the cache of user on redis 
-        let userKey = getLoggedInUserKey(userId);
-        await redis.hSet(userKey,{
+        let key = getLoggedInUserKey(userId);
+        await redis.hSet(key,{
             id: updatedUser.id,
             email: updatedUser.email,
             userMetadata: JSON.stringify({

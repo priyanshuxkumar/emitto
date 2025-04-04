@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { EmailSchema, SendEmailSchema } from "../types";
+import { SendEmailSchema } from "../types";
 import { producer, TOPIC_EMAIL } from "@repo/kafka";
 import { isApiKeyValid } from "../helper";
 import { prisma } from "@repo/db";
@@ -70,12 +70,11 @@ const sendEmail = async(req: Request, res: Response, next: NextFunction) => {
 const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
     const userId = req.id as number;
     try {
-        let allEmailsKey =  getAllEmailsKey(userId as number);
-
-        const cache = await redis.lRange(allEmailsKey, 0 , 20);
+        let key =  getAllEmailsKey(userId as number);
+        
+        const cache = await redis.lRange(key, 0 , 19);
         if(cache.length > 0) {
             console.log(`Cache hit for ${req.baseUrl}${req.path}`);
-
             res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
                 new ApiResponse(
                     true,
@@ -96,15 +95,17 @@ const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
             take : 20
         });
 
-        await redis.rPush(allEmailsKey, result.map(item => JSON.stringify(
-            {
-                id : item.id,
-                to : item.to,
-                status : 'Delivered',
-                subject : item.subject,
-                sentTime : item.createdAt
-            }
-        )));
+        if(result.length > 0) {
+            await redis.rPush(key, result.map(item => JSON.stringify(
+                {
+                    id : item.id,
+                    to : item.to,
+                    status : 'Delivered',
+                    subject : item.subject,
+                    sentTime : item.createdAt
+                }
+            )));
+        }
 
         console.log(`Cache miss for ${req.baseUrl}${req.path}`);
 
@@ -125,6 +126,7 @@ const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
             )
         );
     } catch (error) {
+        console.error(error);
         next(error);
     }
 }
@@ -132,11 +134,12 @@ const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
 const getEmailDetails = async (req: Request, res: Response, next: NextFunction) => {
     const emailId = req.params.id;
     try {
-        let emailDetailskey = getEmailDetailsKey(emailId as string);
+        let key = getEmailDetailsKey(emailId as string);
 
-        const cache = await redis.hGetAll(emailDetailskey);
+        const cache = await redis.hGetAll(key);
         if(cache && Object.keys(cache).length > 0) {
             console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+            
             res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
                 new ApiResponse(
                     true,
@@ -164,7 +167,7 @@ const getEmailDetails = async (req: Request, res: Response, next: NextFunction) 
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Email not found")
         }
 
-        await redis.hSet(emailDetailskey, {
+        await redis.hSet(key, {
             id: result.id,
             from: result.from,
             to: JSON.stringify(result.to),
