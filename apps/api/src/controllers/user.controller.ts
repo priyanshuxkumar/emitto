@@ -15,6 +15,7 @@ const getUser = async(req: Request , res: Response, next: NextFunction) =>  {
         const cache = await redis.hGetAll(key);
         if(cache && Object.keys(cache).length > 0) {
             console.log(`Cache hit for ${req.baseUrl}${req.path}`);
+
             res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
                 new ApiResponse(
                     true,
@@ -39,6 +40,7 @@ const getUser = async(req: Request , res: Response, next: NextFunction) =>  {
             throw new ApiError(false, HTTP_RESPONSE_CODE.NOT_FOUND, "User not found");
         }
 
+        //Cache the data
         const data = {
             id: user.id,
             email: user.email,
@@ -49,10 +51,10 @@ const getUser = async(req: Request , res: Response, next: NextFunction) =>  {
                 emailVerified: user.verified
             })
         }
-
         await redis.hSet(key, data);
 
         console.log(`Cache miss for ${req.baseUrl}${req.path}`);
+
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
                 true,
@@ -78,7 +80,7 @@ const updateUserDetails = async(req: Request , res: Response, next: NextFunction
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
 
-        const updatedUser = await prisma.user.update({
+        const updatedUser : User = await prisma.user.update({
             where : {
                 id: userId
             },

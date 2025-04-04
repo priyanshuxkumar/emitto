@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import bcrypt from "bcryptjs";
 import { config, cookieOptions } from '../config';
 import { SigninSchema, SignupSchema } from '../types';
-import { prisma, User } from '@repo/db';
+import { prisma, User, UserPermissionRole } from '@repo/db';
 import { genAccessAndRefreshToken } from '../helper';
 import { ApiError } from '../utils/ApiError';
 import { HTTP_RESPONSE_CODE } from '../constants/constant';
@@ -58,7 +58,12 @@ const loginUser = async(req: Request, res: Response, next: NextFunction ) => {
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
 
-        const user = await prisma.user.findFirst({
+        const user : {
+            id: number;
+            email: string;
+            password: { hash: string } | null;
+            role: UserPermissionRole ;
+        } | null = await prisma.user.findFirst({
             where: {
                 email: parsedData.data.email
             },

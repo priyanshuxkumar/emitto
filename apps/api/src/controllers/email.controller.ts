@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { SendEmailSchema } from "../types";
 import { producer, TOPIC_EMAIL } from "@repo/kafka";
 import { isApiKeyValid } from "../helper";
-import { prisma } from "@repo/db";
+import { ApiKeyLogs, Email, prisma } from "@repo/db";
 import { HTTP_RESPONSE_CODE } from "../constants/constant";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
@@ -31,7 +31,7 @@ const sendEmail = async(req: Request, res: Response, next: NextFunction) => {
         //Create the entry about API usage / Logs
         const method = req.method;
         const endpoint = req.url;
-        const apikeylog = await prisma.apiKeyLogs.create({
+        const apikeylog : ApiKeyLogs = await prisma.apiKeyLogs.create({
             data : {
                 userId,
                 method,
@@ -79,13 +79,13 @@ const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
                 new ApiResponse(
                     true,
                     HTTP_RESPONSE_CODE.SUCCESS,
-                    cache.map(item => JSON.parse(item)),
+                    cache.map((item : any) => JSON.parse(item)),
                 )
             )
             return;
         }
 
-        const result = await prisma.email.findMany({
+        const result : Email[] = await prisma.email.findMany({
             where : {
                 userId
             },
@@ -95,6 +95,7 @@ const getAllEmail = async(req: Request, res: Response, next: NextFunction) => {
             take : 20
         });
 
+        //Cache the data
         if(result.length > 0) {
             await redis.rPush(key, result.map(item => JSON.stringify(
                 {
@@ -158,7 +159,7 @@ const getEmailDetails = async (req: Request, res: Response, next: NextFunction) 
             )
             return;
         }
-        const result = await prisma.email.findUnique({
+        const result : Email | null = await prisma.email.findUnique({
             where : {
                 id : emailId
             }

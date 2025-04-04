@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { SendSMSSchema } from "../types";
 import { isApiKeyValid } from "../helper";
 import { producer, TOPIC_SMS } from "@repo/kafka";
-import { prisma } from "@repo/db";
+import { ApiKeyLogs, prisma } from "@repo/db";
 import { ApiError } from "../utils/ApiError";
 import { HTTP_RESPONSE_CODE } from "../constants/constant";
 import { ApiResponse } from "../utils/ApiResponse";
@@ -27,7 +27,7 @@ const sendSMS = async (req: Request, res: Response, next: NextFunction) => {
         //Create the entry about API usage / Logs
         const method = req.method;
         const endpoint = req.url;
-        const apikeylog = await prisma.apiKeyLogs.create({
+        const apikeylog : ApiKeyLogs = await prisma.apiKeyLogs.create({
             data : {
                 userId,
                 method,

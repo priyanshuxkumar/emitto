@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { prisma } from '@repo/db';
+import { ApiKey, ApiKeyLogs, prisma } from '@repo/db';
 import { ApiKeyName, ParamsSchema } from '../types';
 import { genApiKey, generateHash } from '../helper';
 import { HTTP_RESPONSE_CODE } from '../constants/constant';
@@ -190,7 +190,7 @@ const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) =
                 new ApiResponse(
                     true,
                     HTTP_RESPONSE_CODE.SUCCESS,
-                    cache.map(item => JSON.parse(item)),
+                    cache.map((item : any) => JSON.parse(item)),
                 )
             )
             return;
@@ -259,7 +259,7 @@ const destroyApiKey = async(req: Request , res: Response, next: NextFunction) =>
 
         const apikeyId = parsedParams.data.id;
 
-        const apikey = await prisma.apiKey.findFirst({
+        const apikey : ApiKey | null = await prisma.apiKey.findFirst({
             where : {
                 id : apikeyId
             }
@@ -306,7 +306,7 @@ const updateApiKeyName = async(req: Request , res: Response, next: NextFunction)
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         };
 
-        const result = await prisma.apiKey.findFirst({
+        const result : ApiKey | null = await prisma.apiKey.findFirst({
             where : {
                 id : apikeyId
             }
@@ -363,7 +363,7 @@ const disableApiKey = async(req: Request , res: Response, next : NextFunction) =
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, "Invalid request");
         }
 
-        const apikey = await prisma.apiKey.findUnique({
+        const apikey : ApiKey | null = await prisma.apiKey.findUnique({
             where : {
                 id : apiKeyId,
                 userId
@@ -409,13 +409,13 @@ const getApiKeyLogs = async (req: Request, res: Response, next: NextFunction) =>
                 new ApiResponse(
                     true,
                     HTTP_RESPONSE_CODE.SUCCESS,
-                    cache.map(item => JSON.parse(item)),
+                    cache.map((item : any) => JSON.parse(item)),
                 )
             )
             return;
         }
 
-        const result = await prisma.apiKeyLogs.findMany({
+        const result : Pick<ApiKeyLogs, "id" | "method" | "endpoint" | "responseStatus" | "createdAt">[] = await prisma.apiKeyLogs.findMany({
             where : {
                 userId 
             },
