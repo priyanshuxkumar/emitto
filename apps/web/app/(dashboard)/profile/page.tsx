@@ -1,50 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import {useDebouncedCallback } from "use-debounce";
 import EditDetails from "@/components/EditDetails";
 import AxiosInstance from "@/utils/axiosInstance";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { EmailSchema } from "@/types/schema";
+import { ApiResponse } from "@/types/types";
 
 export default function Page() {
   const [userData, setUserData] = useState({
     name : '',
     email : ''
   });
-  const [isEmailUnique, setIsEmailUnique] = useState<boolean>(false);
-
-  // Check the email is available Func. 
-  const checkIsEmailUnique = useDebouncedCallback(async (email : string) => {
-    //Checking Email is valid 
-    const data = EmailSchema.safeParse(userData.email);
-    if(!data.success) return;
-    try {
-      const response = await AxiosInstance.post("/api/emails/check-email-unique",{
-          email,
-        },
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (response.status === 200) {
-        setIsEmailUnique(response.data.status);
-      }
-    } catch (err : unknown) {
-      if (err instanceof AxiosError) {
-        const errorMessage = err.response?.data?.message || 'Failed to check email availability';
-        toast(errorMessage);
-      } else if (err instanceof Error) {
-        const errorMessage = err.message || 'Failed to check email availability';
-        toast(errorMessage);
-      }
-    }
-  },2000);
-
+  
   // Return the body for updateHandler Func.
   const getBody = useCallback(() => {
     if(userData.name) {
@@ -62,9 +30,9 @@ export default function Page() {
   // Update Email or Name Func.
   const updateHandler = useCallback(async () => {
     const {name , email} = getBody();
-    if (!isEmailUnique && userData.email) return;
+    if (!userData.email) return;
     try {
-      const response = await AxiosInstance.patch("/api/user/update",
+      const response = await AxiosInstance.patch<ApiResponse>("/api/user/update",
         {
           name,
           email
@@ -76,10 +44,10 @@ export default function Page() {
           },
         }
       );
-      if (response.status === 200) {
+      if (response.data.success === true) {
         setUserData({
-          name: response.data?.name || "",
-          email: response.data?.email || "",
+          name: response.data?.data.name || "",
+          email: response.data?.data.email || "",
         });
         toast(response.data.message);
       }
@@ -92,7 +60,7 @@ export default function Page() {
         toast(errorMessage);
       }
     }
-  },[getBody, isEmailUnique, userData.email]);
+  },[getBody, userData.email]);
 
   return (
     <div className="mx-26 mt-12">
@@ -121,9 +89,7 @@ export default function Page() {
           value={userData.email}
           setterFn={(value) => {
             setUserData((prev) => ({ ...prev, email: value }));
-            checkIsEmailUnique(value);
           }}
-          isEmailUnique={isEmailUnique}
         />
       </div>
     </div>
