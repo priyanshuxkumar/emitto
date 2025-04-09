@@ -3,11 +3,13 @@
 import EmailPreview from "@/components/EmailPreview";
 import Loader from "@/components/Loader";
 import { Button } from "@/components/ui/button";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
 import AxiosInstance from "@/utils/axiosInstance";
 import { ArrowLeft, Code, Mail } from "lucide-react";
 import { ParamValue } from "next/dist/server/request/params";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface EmailProp {
   id: string;
@@ -27,17 +29,20 @@ const useFetchEmail = (id: ParamValue) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await AxiosInstance.get(`/api/emails/${id}`, {
+      const response = await AxiosInstance.get<ApiResponse>(`/api/emails/${id}`, {
         withCredentials: true,
         headers: {
           "Content-Type": "application/json",
         },
       });
-      if (response.status === 200) {
-        setData(response.data);
+      if (response.data.success === true) {
+        setData(response.data.data);
       }
     } catch (err: unknown) {
-      console.error(err);
+      const message = (err as ApiErrorResponse).message || "Something went wrong";
+      toast.error("Error", {
+        description: message,
+      });
     } finally {
       setIsLoading(false);
     }

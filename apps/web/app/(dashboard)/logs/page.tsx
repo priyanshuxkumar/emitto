@@ -16,6 +16,8 @@ import { useEffect, useState } from "react";
 import AxiosInstance from "@/utils/axiosInstance";
 import { timeAgo } from "@/helper/time";
 import clsx from "clsx";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
+import { toast } from "sonner";
 
 export interface ApiKeyLogProps {
   id: string;
@@ -34,17 +36,20 @@ const useFetchApiKeyLogs = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await AxiosInstance.get(`/api/apikey/logs`, {
+        const response = await AxiosInstance.get<ApiResponse>(`/api/apikey/logs`, {
           withCredentials: true,
           headers: {
             "Content-Type": "application/json",
           },
         });
-        if (response.status === 200) {
-          setData(response.data);
+        if (response.data.success === true) {
+          setData(response.data.data);
         }
       } catch (err: unknown) {
-        console.error(err);
+        const message = (err as ApiErrorResponse).message || "Something went wrong";
+        toast.error("Error", {
+          description: message,
+        });
       } finally {
         setIsLoading(false);
       }

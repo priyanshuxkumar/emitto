@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/popover";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { nnfxDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
+import { toast } from "sonner";
 
 interface ApiKeyLogDetailsProps extends ApiKeyLogProps {
   requestBody: Record<string, unknown>;
@@ -30,17 +32,20 @@ const useFetchApiKeyLogDetails = (id: ParamValue) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await AxiosInstance.get(`/api/apikey/log/${id}`, {
+      const response = await AxiosInstance.get<ApiResponse>(`/api/apikey/log/${id}`, {
         withCredentials: true,
         headers: {
           "Content-Type": "application/json",
         },
       });
-      if (response.status === 200) {
-        setData(response.data);
+      if (response.data.success === true) {
+        setData(response.data.data);
       }
     } catch (err: unknown) {
-      console.error(err);
+      const message = (err as ApiErrorResponse).message || "Something went wrong";
+      toast.error("Error", {
+        description: message,
+      });
     } finally {
       setIsLoading(false);
     }

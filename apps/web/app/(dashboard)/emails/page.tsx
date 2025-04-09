@@ -15,6 +15,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import AxiosInstance from "@/utils/axiosInstance";
 import { timeAgo } from "@/helper/time";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
+import { toast } from "sonner";
 
 interface EmailProp {
   id : string;
@@ -32,17 +34,20 @@ const useFetchEmails = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await AxiosInstance.get(`/api/emails`, {
+        const response = await AxiosInstance.get<ApiResponse>(`/api/emails`, {
           withCredentials: true,
           headers: {
             "Content-Type": "application/json",
           },
         });
-        if (response.status === 200) {
-          setData(response.data);
+        if (response.data.success === true) {
+          setData(response.data.data);
         }
       } catch (err: unknown) {
-        console.error(err);
+        const message = (err as ApiErrorResponse).message || "Something went wrong";
+        toast.error("Error", {
+          description: message,
+        });
       } finally {
         setIsLoading(false);
       }
