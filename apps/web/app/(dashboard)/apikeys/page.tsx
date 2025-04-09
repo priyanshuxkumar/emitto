@@ -39,11 +39,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, Eye} from "lucide-react";
-import { AxiosError } from "axios";
 import { toast } from "sonner";
-import ErrorPage from "@/components/Error";
 import Link from "next/link";
 import { timeAgo } from "@/helper/time";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
 
 interface ApiDataProp {
     id : string;
@@ -56,27 +55,26 @@ interface ApiDataProp {
 const useFetchApiKeys = () => {
   const [data, setData] = useState<ApiDataProp[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
+  // const [error, setError] = useState<string>('');
   
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await AxiosInstance.get('/api/apikey', {
+        const response = await AxiosInstance.get<ApiResponse>('/api/apikey', {
           withCredentials: true,
           headers: {
             "Content-Type": "application/json"
           }
         });
-        setData(response.data);
-      } catch (err : unknown) {
-        if (err instanceof AxiosError) {
-          const errorMessage = err.response?.data?.message || 'Failed to fetch API Keys';
-          setError(errorMessage);
-        } else if (err instanceof Error) {
-          const errorMessage = err.message || 'Failed to fetch API Keys';
-          setError(errorMessage);
+        if(response.data.success === true) {
+          setData(response.data.data);
         }
+      } catch (err : unknown) {
+        const message = (err as ApiErrorResponse).message || "Something went wrong";
+        toast.error("Error", {
+          description: message,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -85,11 +83,11 @@ const useFetchApiKeys = () => {
     fetchData();
   }, []);
 
-  return { data: data || [], setData, isLoading, error };
+  return { data: data || [], setData, isLoading };
 };
 
 export default function Page() {
-  const { data, setData, isLoading, error:errMessage } = useFetchApiKeys();
+  const { data, setData, isLoading } = useFetchApiKeys();
 
   // Copy API Key 
   const apiKeyRef = useRef<HTMLInputElement | null>(null);
@@ -112,17 +110,19 @@ export default function Page() {
 
   const createApiKey = async() => {
     try {
-      const response = await AxiosInstance.post("/api/apikey/create", {
+      const response = await AxiosInstance.post<ApiResponse>("/api/apikey/create", {
         name : formData.name
       }, {
         withCredentials : true
       });
-      if(response.status == 201){
+      if(response.data.success == true){
+        const { apiKey, ...newApiKey } = response.data.data;
+
         //Append new API key with previous keys
-        setData(prev => [response.data.apiKeyMetadata , ...prev]);
+        setData(prev => [newApiKey , ...prev]);
 
         //Set new generated API Key for showing user (one time)
-        setApiKey(response.data.apiKey);
+        setApiKey(apiKey);
 
         //Close the Dialog of Create API Key
         setApiDialogOpen(false);
@@ -131,17 +131,10 @@ export default function Page() {
         setApiKeyViewDialogOpen(!apiKeyViewDialogOpen);
       }
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorMessage = err.response?.data?.message || 'API Key Creation failed';
-
-        toast.error('API Key not created', {
-          description: errorMessage
-        });
-      } else {
-        toast.error('Unexpected Error', {
-          description: 'An unexpected error occurred'
-        });
-      }
+      const message = (err as ApiErrorResponse).message || "Something went wrong";
+        toast.error("Error", {
+          description: message,
+      });
     }
   };
 
@@ -149,6 +142,10 @@ export default function Page() {
     apiKeyRef.current?.select();
     apiKeyRef.current?.setSelectionRange(0,apiKey.length)
     window.navigator.clipboard.writeText(apiKey);
+
+    toast.success("Success", {
+      description : "API Key copied successfully!"
+    });
   },[apiKey]);
 
   return (
@@ -259,12 +256,6 @@ export default function Page() {
                 </div>
               </TableCell>
             </TableRow>
-            ) : errMessage ? (
-              <TableRow>
-                <TableCell colSpan={5}>
-                  <ErrorPage errorMessage = {errMessage as string}/>
-                </TableCell>
-              </TableRow>
             ) : (
               data.map((item: ApiDataProp) => (
                 <TableRow key={item.id} className="text-base">

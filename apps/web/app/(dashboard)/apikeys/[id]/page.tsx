@@ -30,6 +30,8 @@ import { useUser } from "@/context/userContext";
 import { ParamValue } from "next/dist/server/request/params";
 import Loader from "@/components/Loader";
 import { timeAgo } from "@/helper/time";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
+import { toast } from "sonner";
 
 interface APIKeyDetails {
   id: string;
@@ -52,17 +54,20 @@ const useFetchApiKeyDetails = (id: ParamValue) => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const response = await AxiosInstance.get(`/api/apikey/${id}`, {
+        const response = await AxiosInstance.get<ApiResponse>(`/api/apikey/${id}`, {
           withCredentials: true,
           headers: {
             "Content-Type": "application/json",
           },
         });
-        if (response.status === 200) {
-          setData(response.data);
+        if (response.data.success === true) {
+          setData(response.data.data);
         }
       } catch (err: unknown) {
-        console.error(err);
+        const message = (err as ApiErrorResponse).message || "Something went wrong";
+        toast.error("Error", {
+          description: message,
+        });
       } finally {
         setIsLoading(false);
       }
