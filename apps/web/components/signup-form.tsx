@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import GoogleIcon from "./Icons/Google.icon";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AxiosError } from "axios";
 import AxiosInstance from "@/utils/axiosInstance";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,15 +21,11 @@ import { SignupFormSchema } from "@/types/schema";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
 
 export function SignupForm() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [errors, setErrors] = useState<{
-    email?: string;
-    password?: string;
-    general?: string;
-  }>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);;
 
   const form = useForm<z.infer<typeof SignupFormSchema>>({
     resolver: zodResolver(SignupFormSchema),
@@ -44,9 +39,7 @@ export function SignupForm() {
   async function onSubmit(values: z.infer<typeof SignupFormSchema>) {
     try {
       setIsSubmitting(true);
-      const response = await AxiosInstance.post(
-        "/api/auth/signup",
-        {
+      const response = await AxiosInstance.post<ApiResponse>("/api/auth/signup",{
           name: values.name,
           email: values.email,
           password: values.password,
@@ -56,29 +49,17 @@ export function SignupForm() {
           withCredentials: true,
         }
       );
-      if (response.status == 200) {
-        toast.success("Signup Successful", {
+      if (response.data.success === true) {
+        toast.success("Signup Successfull", {
           description: response.data.message,
         });
         router.push("/emails");
       }
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorMessage = err.response?.data?.message || "Login failed";
-
-        toast.error("Login Error", {
-          description: errorMessage,
-        });
-
-        setErrors((prev) => ({
-          ...prev,
-          general: errorMessage,
-        }));
-      } else {
-        toast.error("Unexpected Error", {
-          description: "An unexpected error occurred",
-        });
-      }
+      const message = (err as ApiErrorResponse).message || "Something went wrong";
+      toast.error("Signup error", {
+        description: message,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -118,9 +99,6 @@ export function SignupForm() {
                   </FormItem>
                 )}
               />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-500">{errors.email}</p>
-              )}
               <FormField
                 control={form.control}
                 name="password"
@@ -138,9 +116,6 @@ export function SignupForm() {
                   </FormItem>
                 )}
               />
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-500">{errors.password}</p>
-              )}
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Signing up" : "Create account"}
               </Button>

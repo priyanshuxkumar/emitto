@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import AxiosInstance from "@/utils/axiosInstance";
 import { toast } from "sonner";
 import Loader from "./Loader";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
 
 export default function UserProfile() {
   //Logged-in User Details
@@ -19,19 +20,21 @@ export default function UserProfile() {
 
   const handleLogout = async () => {
     try {
-      const response = await AxiosInstance.post(
-        "/api/auth/logout",
+      const response = await AxiosInstance.post<ApiResponse>("/api/auth/logout",
         {},
         {
           withCredentials: true,
         }
       );
-      if (response.status == 200) {
+      if (response.data.success === true) {
         router.push('/signin')
         toast(response.data.message);
       }
     } catch (err) {
-      console.error(err);
+      const message = (err as ApiErrorResponse).message || "Something went wrong";
+      toast.error("Logout failed", {
+        description: message,
+      });
     }
   };
   return (

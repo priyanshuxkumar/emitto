@@ -11,8 +11,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
 import AxiosInstance from "@/utils/axiosInstance";
-import { AxiosError } from "axios";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -21,7 +21,7 @@ export default function Feedback() {
   const [open, setOpen] = useState(false);
   const handleFeedbackSubmit = async() => {
     try {
-        const response = await AxiosInstance.post('/api/feedback/submit', {
+        const response = await AxiosInstance.post<ApiResponse>('/api/feedback/submit', {
             comment
         }, {
             withCredentials : true,
@@ -29,23 +29,16 @@ export default function Feedback() {
                 'Content-Type' : 'application/json'
             }
         });
-        if(response.status == 201) {
-            toast(response.data.message);
+        if(response.data.success == true) {
+            toast(response.data.data.message);
             setOpen(prevOpen => !prevOpen);
             setComment('');
         }
     } catch (err : unknown) {
-        if (err instanceof AxiosError) {
-            const errorMessage = err.response?.data?.message || 'API Key Creation failed';
-    
-            toast.error('API Key not created', {
-              description: errorMessage
-            });
-        } else {
-        toast.error('Unexpected Error', {
-            description: 'An unexpected error occurred'
+        const message = (err as ApiErrorResponse).message || "Something went wrong";
+        toast.error("Error", {
+          description: message,
         });
-        }
     }
   }
   return (

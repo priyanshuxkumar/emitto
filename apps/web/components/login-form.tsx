@@ -16,9 +16,9 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import AxiosInstance from "@/utils/axiosInstance";
 import { useRouter } from "next/navigation";
-import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { validateSigninForm } from "@/helper";
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
 
 export function LoginForm({
   className,
@@ -34,43 +34,33 @@ export function LoginForm({
     general?: string;
   }>({});
 
-  const handleFormSubmit = async(e: FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrors({});
-    
-    if (!validateSigninForm({email, password, setErrors})) return;
+
+    if (!validateSigninForm({ email, password, setErrors })) return;
     try {
       setIsSubmitting(true);
-      const response = await AxiosInstance.post('/api/auth/signin', {
-        email,
-        password
-      }, {
-        headers: { 'Content-Type': 'application/json' },
-        withCredentials: true
+      const response = await AxiosInstance.post<ApiResponse>("/api/auth/signin",{
+          email,
+          password,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
+      );
+      if (response.data.success === true) {
+        toast.success("Login Successful", {
+          description: "Redirecting to emails...",
+        });
+        router.push("/emails");
+      }
+    } catch (err : unknown) {
+      const message = (err as ApiErrorResponse).message || "Something went wrong";
+      toast.error("Error", {
+        description: message,
       });
-      if(response.status == 200) {
-        toast.success('Login Successful', {
-          description: 'Redirecting to emails...'
-        });
-        router.push('/emails');
-      }
-    } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorMessage = err.response?.data?.message || 'Login failed';
-
-        toast.error('Login Error', {
-          description: errorMessage
-        });
-
-        setErrors(prev => ({
-          ...prev,
-          general: errorMessage
-        }));
-      } else {
-        toast.error('Unexpected Error', {
-          description: 'An unexpected error occurred'
-        });
-      }
     } finally {
       setIsSubmitting(false);
     }

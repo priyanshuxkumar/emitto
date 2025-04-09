@@ -16,8 +16,6 @@ interface EditDetailsProps {
   value: string;
   handler: () => void;
   setterFn: (value: string) => void;
-  checkIsEmailUnique?: () => void;
-  isEmailUnique?: boolean;
 }
 
 export default function EditDetails({
@@ -27,7 +25,6 @@ export default function EditDetails({
   value,
   handler,
   setterFn,
-  isEmailUnique
 }: EditDetailsProps) {
   return (
     <Card className="w-full  border-zinc-800 bg-black text-white">
@@ -48,7 +45,7 @@ export default function EditDetails({
               className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-zinc-700"
               placeholder={placeholder}
             />
-            {type === "email" && value.length > 0 && isEmailUnique === false && (
+            {type === "email" && value.length > 0 && (
               <div className="flex justify-start items-center">
                 <p className="text-red-500 text-sm">Email is already taken</p>
               </div>
@@ -59,7 +56,7 @@ export default function EditDetails({
       <CardFooter>
         <Button
           onClick={handler}
-          disabled={(type == "email" && !isEmailUnique) || (type == "text" && !value)}
+          disabled={(type == "email" && !value) || (type == "text" && !value)}
           className="w-auto bg-white text-black hover:bg-zinc-200 transition-colors"
         >
           Update {title}
