@@ -12,13 +12,13 @@
   "dependencies": {
     "@repo/db": "*",
     "@repo/kafka": "*",
-    "@repo/redis": "*",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
+    "redis": "^4.7.0",
     "supertest": "^7.1.0",
     "vitest-mock-extended": "^3.0.1",
     "zod": "^3.24.2"
