@@ -1,20 +1,22 @@
-import axios from "axios";
+import { ApiErrorResponse } from "@/types/types";
+import axios, { AxiosError, AxiosResponse } from "axios";
 
 const AxiosInstance = axios.create({
     baseURL: 'http://localhost:8080'
 });
 
 
-// Axios Interceptor: Response Method
 AxiosInstance.interceptors.response.use(
-    (response) => {
-        // Can be modified response
+    (response: AxiosResponse): AxiosResponse => {
         return response;
     },
-    (error) => {
-        // Handle response errors here
+    (error : AxiosError) => {
+        if (error.response && error.response.data) {
+            return Promise.reject(error.response.data as ApiErrorResponse);
+        }
         return Promise.reject(error);
     }
 );
+
 
 export default AxiosInstance;
