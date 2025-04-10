@@ -1,7 +1,7 @@
 'use client'
 
+import { ApiErrorResponse, ApiResponse } from "@/types/types";
 import AxiosInstance from "@/utils/axiosInstance";
-import { AxiosError } from "axios";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -42,22 +42,21 @@ export const UserProvider : React.FC<UserProviderProps> = ({children}) => {
     useEffect(() => {
         (async() => {
             try {
-                const response = await AxiosInstance.get(`/api/user`, {
+                const response = await AxiosInstance.get<ApiResponse>(`/api/user`, {
                     withCredentials: true,
                     headers : {
                         'Content-Type' : 'application/json'
                     }
                 });
-                if(response.status == 200){
-                   setUser(response.data);
+                if(response.data.success == true){
+                   setUser(response.data.data);
                    setIsAuthenticated(true);
                 }
-            } catch (error) {
-                if(error instanceof AxiosError){
-                    toast(error.response?.data.message || 'Something went wrong');
-                }else {
-                    toast('Failed to fetch user details!');
-                }
+            } catch (err) {
+                const message = (err as ApiErrorResponse).message || "Something went wrong";
+                toast.error("Failed to fetch data", {
+                  description: message,
+                });
             }
         })()
     },[]);
