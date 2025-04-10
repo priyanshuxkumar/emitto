@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ezysend",
-  description: "Email for developers",
+  title: "Emitto",
+  description: "Email & SMS for developers",
 };
 
 export default function RootLayout({

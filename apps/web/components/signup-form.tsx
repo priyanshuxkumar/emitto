@@ -68,7 +68,7 @@ export function SignupForm() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Create a Ezysend account</CardTitle>
+          <CardTitle className="text-xl">Create a Emitto account</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>

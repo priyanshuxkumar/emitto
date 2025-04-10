@@ -341,7 +341,7 @@ export default function Home() {
                 </h2>
                 <p className="mx-auto max-w-[700px] text-primary-foreground/80 md:text-xl">
                   Deliver emails, SMS, and push notifications effortlessly. Join
-                  thousands of developers automating communication with Ezysend.
+                  thousands of developers automating communication with Emitto.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 mt-4">
                   <Link href={"/signup"}>

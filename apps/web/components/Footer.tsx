@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="flex flex-col gap-4 sm:flex-row justify-between items-center border-t border-border/40 py-8">
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()}{" "}
-            <span className="font-bold">EzySend.</span> All rights reserved.
+            <span className="font-bold">Emitto.</span> All rights reserved.
           </p>
           <div className="flex gap-4">
             <Link

@@ -13,7 +13,7 @@ export default function Header() {
       >
         <div className="container mx-auto flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-bold">
-            <span className="font-bold text-xl">EzySend</span>
+            <span className="font-bold text-2xl">Emitto</span>
           </div>
           <nav className="hidden md:flex gap-8">
             <Link
