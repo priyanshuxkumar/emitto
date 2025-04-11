@@ -66,7 +66,7 @@ export default function UserProfile() {
                   <Ellipsis />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-55 space-y-2">
+              <PopoverContent className="w-50 py-2 px-1">
                 <div>
                   <Button
                     onClick={() => router.push("/profile")}
@@ -79,8 +79,8 @@ export default function UserProfile() {
                 </div>
                 <div>
                   <Button
-                    variant={"outline"}
-                    className="w-full justify-start text-base"
+                    variant={"ghost"}
+                    className="w-full justify-start text-base text-red-500 hover:text-red-500"
                     onClick={handleLogout}
                   >
                     <LogOutIcon />
