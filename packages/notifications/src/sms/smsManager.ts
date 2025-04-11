@@ -1,6 +1,6 @@
 import { PublishCommand } from "@aws-sdk/client-sns";
-import { SendSMS } from "./types";
-import { snsClient } from "./config";
+import { SendSMS } from "../types";
+import { snsClient } from "../config";
 
 
 function smsParams (payload : SendSMS) {

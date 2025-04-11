@@ -1,5 +1,5 @@
-import { SendEmail } from "./types";
-import { sesClient } from "./config";
+import { SendEmail } from "../types";
+import { sesClient } from "../config";
 import { SendEmailCommand } from "@aws-sdk/client-ses";
 
 

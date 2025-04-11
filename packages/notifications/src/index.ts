@@ -1,3 +1,3 @@
-export * from "./email-manager";
+export * from "./emails/emailManager";
 export * from "./config";
-export * from "./sms-manager";
+export * from "./sms/smsManager";
