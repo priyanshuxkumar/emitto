@@ -24,8 +24,16 @@ export const SigninSchema = z.object({
   password: PasswordSchema,
 });
 
-export const ApiKeyName = z.object({
-  name: z.string().trim().nonempty("Field cannot be empty"),
+export const ApiKeyName = z.string().trim().nonempty("Field cannot be empty");
+
+export const CreateApiKeySchema = z.object({
+  name: ApiKeyName,
+  permissions : z.enum(["FullAccess", "SendingAccess"]).default('FullAccess')
+});
+
+export const UpdateApiKeySchema = z.object({
+  name: ApiKeyName,
+  permissions : z.enum(["FullAccess", "SendingAccess"]).default('FullAccess')
 });
 
 export const ParamsSchema = z.object({
