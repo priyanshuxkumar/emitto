@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { auth } from '../middleware/auth.middleware';
-import { createApiKey, destroyApiKey, disableApiKey, getAllApiKeys, getApiKeyDetails, getApiKeyLogs, updateApiKeyName, getApiKeyLogDetails } from '../controllers/api.controller';
-import { prisma } from '@repo/db';
+import { createApiKey, destroyApiKey, disableApiKey, getAllApiKeys, getApiKeyDetails, getApiKeyLogs, updateApiKey, getApiKeyLogDetails } from '../controllers/api.controller';
 
 const router = Router()
 
@@ -17,7 +16,7 @@ router.route("/:id").get(auth, getApiKeyDetails);
 
 router.route("/disable/:id").put(auth , disableApiKey);
 
-router.route("/:id").put(auth , updateApiKeyName);
+router.route("/:id").patch(auth , updateApiKey);
 
 router.route("/:id").delete(auth, destroyApiKey);
 
