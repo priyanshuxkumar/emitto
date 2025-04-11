@@ -29,13 +29,14 @@ export default function Feedback() {
                 'Content-Type' : 'application/json'
             }
         });
-        if(response.data.success == true) {
-            toast(response.data.data.message);
+        if(response.data.success === true) {
+            console.log(response.data);
+            toast(response.data.message);
             setOpen(prevOpen => !prevOpen);
-            setComment('');
         }
-    } catch (err : unknown) {
-        const message = (err as ApiErrorResponse).message || "Something went wrong";
+    } catch (err) {
+      const message = (err as ApiErrorResponse).message || "Something went wrong";
+      console.error(err)
         toast.error("Error", {
           description: message,
         });
