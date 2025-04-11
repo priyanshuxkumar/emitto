@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { ApiKey, ApiKeyLogs, prisma } from '@repo/db';
-import { ApiKeyName, ParamsSchema } from '../types';
+import { CreateApiKeySchema, ParamsSchema, UpdateApiKeySchema } from '../types';
 import { genApiKey, generateHash } from '../helper';
 import { HTTP_RESPONSE_CODE } from '../constants/constant';
 import { ApiError } from '../utils/ApiError';
@@ -12,8 +12,7 @@ const createApiKey = async(req: Request , res: Response, next: NextFunction) => 
     const userId = req.id as number;
     try {
         const body = req.body;
-        const parsedData = ApiKeyName.safeParse(body);
-
+        const parsedData = CreateApiKeySchema.safeParse(body);
         if(!parsedData.success) {
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
         }
@@ -47,7 +46,8 @@ const createApiKey = async(req: Request , res: Response, next: NextFunction) => 
                 apikey : hashApiKey,
                 userId,
                 isActive: true,
-                shortToken: apiKey.slice(0,11)
+                shortToken: apiKey.slice(0,11),
+                permission: parsedData.data.permissions
             }
         });
 
@@ -183,14 +183,14 @@ const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) =
         const key = getAllApiKeysKey(userId);
 
         // Check the cache exist
-        const cache = await redis.lRange(key, 0 , 19);
-        if(cache.length > 0) {
+        const cache = await redis.hGetAll(key);
+        if(cache && Object.keys(cache).length > 0) {
             console.log(`Cache hit for ${req.baseUrl}${req.path}`);
             res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
                 new ApiResponse(
                     true,
                     HTTP_RESPONSE_CODE.SUCCESS,
-                    cache.map((item : any) => JSON.parse(item)),
+                    Object.values(cache).map((item: any) => JSON.parse(item))
                 )
             )
             return;
@@ -198,7 +198,8 @@ const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) =
 
         const result = await prisma.apiKey.findMany({
             where : {
-                userId
+                userId,
+                isActive : true
             },
             include : {
                 apikeyLogs : {
@@ -215,15 +216,19 @@ const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) =
 
         // Cache the data
         if(result.length > 0) {
-            await redis.rPush(key, result.map(item => JSON.stringify(
-                {
-                    id : item.id,
-                    name : item.name,
-                    shortToken : item.shortToken,
-                    lastUsed : item.apikeyLogs[0]?.createdAt || null,
-                    createdAt : item.createdAt
-                }
-            )));
+            for(const item of result) {
+                await redis.hSet(
+                    key,
+                    item.id,
+                    JSON.stringify({
+                      id: item.id,
+                      name: item.name,
+                      shortToken: item.shortToken,
+                      lastUsed: item.apikeyLogs?.[0]?.createdAt ?? null,
+                      createdAt: item.createdAt,
+                    })
+                );
+            }
         }
 
         console.log(`Cache miss for ${req.baseUrl}${req.path}`);
@@ -250,6 +255,7 @@ const getAllApiKeys = async(req : Request , res: Response, next: NextFunction) =
 }
 
 const destroyApiKey = async(req: Request , res: Response, next: NextFunction) => {
+    const userId = req.id as number;
     try {
         const parsedParams = ParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -278,6 +284,10 @@ const destroyApiKey = async(req: Request , res: Response, next: NextFunction) =>
             }
         });
 
+        // Remove the API Key from cache data
+        const key = getAllApiKeysKey(userId);
+        await redis.hDel(key, apikeyId);
+
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
                 true,
@@ -291,7 +301,8 @@ const destroyApiKey = async(req: Request , res: Response, next: NextFunction) =>
     }
 };
 
-const updateApiKeyName = async(req: Request , res: Response, next: NextFunction) => {
+const updateApiKey = async(req: Request , res: Response, next: NextFunction) => {
+    const userId = req.id as number;
     try {
         const parsedParams = ParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -300,7 +311,8 @@ const updateApiKeyName = async(req: Request , res: Response, next: NextFunction)
         }
         const apikeyId = parsedParams.data.id;
         const body = req.body;
-        const parsedData = ApiKeyName.safeParse(body);
+
+        const parsedData = UpdateApiKeySchema.safeParse(body);
 
         if(!parsedData.success) {
             throw new ApiError(false, HTTP_RESPONSE_CODE.BAD_REQUEST, parsedData?.error?.issues[0]?.message ?? "Invalid Input");
@@ -308,7 +320,8 @@ const updateApiKeyName = async(req: Request , res: Response, next: NextFunction)
 
         const result : ApiKey | null = await prisma.apiKey.findFirst({
             where : {
-                id : apikeyId
+                id : apikeyId,
+                userId
             }
         });
 
@@ -318,10 +331,11 @@ const updateApiKeyName = async(req: Request , res: Response, next: NextFunction)
 
         const apiKey = await prisma.apiKey.update({
             where : {
-                id : apikeyId
+                id : apikeyId,
             },
             data: {
-                name: parsedData.data.name
+                name: parsedData.data.name,
+                permission : parsedData.data.permissions
             },
             include : {
                 apikeyLogs : {
@@ -336,6 +350,20 @@ const updateApiKeyName = async(req: Request , res: Response, next: NextFunction)
             }
         });
 
+        // Update the API Key from cache data
+        const key = getAllApiKeysKey(userId);
+        await redis.hSet(
+            key,
+            apiKey.id,
+            JSON.stringify({
+                id: apiKey.id,
+                name: apiKey.name,
+                shortToken: apiKey.shortToken,
+                lastUsed: apiKey.apikeyLogs?.[0]?.createdAt ?? null,
+                createdAt: apiKey.createdAt,
+            })
+        );
+
         res.status(HTTP_RESPONSE_CODE.SUCCESS).json(
             new ApiResponse(
                 true,
@@ -343,9 +371,7 @@ const updateApiKeyName = async(req: Request , res: Response, next: NextFunction)
                 {
                     id : apiKey.id,
                     name : apiKey.name,
-                    shortToken : apiKey.shortToken,
-                    lastUsed : apiKey.apikeyLogs[0],
-                    createdAt : apiKey.createdAt
+                    permission : apiKey.permission,
                 },
                 "API updated successfully"
             )
@@ -529,7 +555,7 @@ export {
   getAllApiKeys,
   getApiKeyDetails,
   destroyApiKey,
-  updateApiKeyName,
+  updateApiKey,
   disableApiKey,
   getApiKeyLogs,
   getApiKeyLogDetails,
