@@ -317,7 +317,7 @@ export default function Page() {
                           <Ellipsis />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-55 space-y-2">
+                      <PopoverContent className="w-50 py-2 px-1">
                         <div>
                           {/* Update API Key Button : its open the modal  */}
                           <Button 
