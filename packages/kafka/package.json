@@ -7,8 +7,8 @@
   "scripts": {
     "build": "tsc",
     "kafka:init": "node dist/admin.js",
-    "dev:email" : "tsc --watch & node dist/consumer.js email-group",
-    "dev:sms" : "tsc --watch & node dist/consumer.js sms-group",
+    "dev:email" : "tsc --watch & node dist/consumer.js email-group email-events",
+    "dev:sms" : "tsc --watch & node dist/consumer.js sms-group sms-events",
     "dev": "tsc --watch & node dist/consumer.js email-group & node dist/consumer.js sms-group",
     "clean": "rm -rf dist"
   },
