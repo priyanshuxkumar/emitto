@@ -10,11 +10,11 @@ async function processEmail(data: EmailPayload) {
     html: data.html,
   };
   try {
-    const response = await sendEmail(payload);
+    const response = await retry(() => sendEmail(payload), 3, 2000);
 
     if (response.$metadata.httpStatusCode === 200) {
       await prisma.$transaction(async (tx) => {
-        //Make the entry  of email on db
+        //Make the entry of email on db
         const email = await tx.email.create({
           data: {
             from: String(data.from),
@@ -25,6 +25,7 @@ async function processEmail(data: EmailPayload) {
             userId: data.userId,
           },
         });
+        
         //Update the response status in apikey logs
         await tx.apiKeyLogs.update({
           where: {
@@ -38,8 +39,8 @@ async function processEmail(data: EmailPayload) {
       });
       console.log("Response MessageId EMAIL", response.MessageId);
     }
-  } catch (error) {
-    console.log("Error in sending email consumer");
+  } catch (e : any) {
+    throw e
   }
 }
 
@@ -50,7 +51,7 @@ async function processSMS(data: SMSPayload) {
   };
 
   try {
-    const response = await sendSMS(payload);
+    const response = await retry(() => sendSMS(payload), 3, 2000);
     
     if (response.$metadata.httpStatusCode === 200) {
         await prisma.$transaction(async (tx) => {
@@ -76,9 +77,26 @@ async function processSMS(data: SMSPayload) {
         });
         console.log("Response MessageId SMS", response.MessageId);
       }
-  } catch (error) {
-    console.log("Error in sending SMS consumer");
+  } catch (e: any) {
+    throw e
   }
+}
+
+
+async function retry<T>(fn: () => Promise<T>, retries=3, delay= 2000) {
+  let err;
+  for(let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (e : any) {
+      err = e;
+      console.warn(`Retry ${attempt} failed. Retrying in ${delay} ms...`);
+      if(attempt < retries) {
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+  } 
+  throw err;
 }
 
 export { processEmail, processSMS };
