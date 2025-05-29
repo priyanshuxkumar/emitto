@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     volumes:
-      - critique-postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
   valkey:
     image: valkey/valkey:latest
@@ -29,4 +29,5 @@ services:
       - 9092:9092
 
 volumes:
-  critique-postgres-data:
+  postgres_data:
+  valkey_data:
