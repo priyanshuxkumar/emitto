@@ -1,6 +1,6 @@
 version: "3.8"
 
-name: ezysend
+name: emitto
 services:
   postgres:
     image: postgres:latest
@@ -14,11 +14,13 @@ services:
     volumes:
       - critique-postgres-data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:latest
+  valkey:
+    image: valkey/valkey:latest
 
     ports:
       - 6379:6379
+    volumes:
+      - valkey_data:/usr/local/etc/valkey
 
   kafka:
     image: apache/kafka:latest
